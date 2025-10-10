@@ -28,7 +28,7 @@ services:
       target: runner
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${BREW_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-brewthis_user}:${POSTGRES_PASSWORD:-brewthis_password}@db:5432/${POSTGRES_DB:-brewthis}
@@ -50,7 +50,7 @@ services:
       dockerfile: ./docker/Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "${BREW_PORT:-3001}:3000"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-brewthis_user}:${POSTGRES_PASSWORD:-brewthis_password}@db:5432/${POSTGRES_DB:-brewthis}

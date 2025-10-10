@@ -23,53 +23,45 @@ export default function Home() {
     setHasSearched(true);
     
     try {
-      // TODO: Replace with actual API call
-      console.log('Searching for:', query, filters);
+      const searchParams = new URLSearchParams({
+        q: query,
+        limit: '20',
+        offset: '0',
+        sort: filters.sortBy || 'created',
+        order: filters.sortOrder || 'desc',
+      });
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`/api/recipes/search?${searchParams.toString()}`);
+      const result = await response.json();
       
-      // Mock data for now
-      const mockRecipes: BrewfatherRecipe[] = [
-        {
-          _id: '1',
-          name: 'Talus Pale Ale',
-          style: { name: 'American Pale Ale' },
-          abv: 5.2,
-          ibu: 35,
-          og: 1.052,
-          fg: 1.012,
-          color: 6,
-          batchSize: 23,
-          boilTime: 60,
-          efficiency: 75,
-          author: 'You',
-          description: 'A hoppy pale ale showcasing Talus hops with citrus and floral notes.',
-          tags: ['hoppy', 'citrus', 'american'],
-          public: false
-        },
-        {
-          _id: '2', 
-          name: 'Session IPA',
-          style: { name: 'Session IPA' },
-          abv: 4.1,
-          ibu: 45,
-          og: 1.045,
-          fg: 1.008,
-          color: 4,
-          batchSize: 23,
-          boilTime: 60,
-          efficiency: 72,
-          author: 'Brewmaster Joe',
-          description: 'A lower alcohol IPA with big hop flavor and aroma.',
-          tags: ['session', 'hoppy', 'ipa'],
-          public: true
-        }
-      ];
+      if (!result.success) {
+        throw new Error(result.message || result.error || 'Search failed');
+      }
       
-      setRecipes(mockRecipes);
+      setRecipes(result.data.recipes || []);
+      
+      // Log successful search for debugging
+      console.log(`Found ${result.data.recipes?.length || 0} recipes for "${query}"`);
+      
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Recipe search error:', error);
+      
+      // Show user-friendly error message
+      let errorMessage = 'Failed to search recipes. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Server configuration error')) {
+          errorMessage = 'Search service is temporarily unavailable.';
+        } else if (error.message.includes('External API error')) {
+          errorMessage = 'Unable to connect to recipe database. Please try again later.';
+        }
+      }
+      
+      // For now, we'll just log the error. In the future, we could show a toast/alert
+      console.error('User-facing error:', errorMessage);
+      
+      // Set empty results on error
+      setRecipes([]);
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +97,7 @@ export default function Home() {
                 Find Your Perfect Recipe
               </h1>
               <p className="lead text-muted">
-                Search thousands of brewing recipes from Brewfather community
+                Search thousands of brewing recipes from the Brewfather Recipe Library
               </p>
             </div>
             

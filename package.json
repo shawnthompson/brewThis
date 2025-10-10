@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "bash -c 'source .env && next dev -p ${BREW_PORT:-3000}'",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "bash -c 'source .env && next start -p ${BREW_PORT:-3000}'",
+    "lint": "next lint"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
