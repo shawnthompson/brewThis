@@ -38,6 +38,7 @@ export default function Home() {
   const [, setAllBatches] = useState<BrewfatherBatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState<BrewfatherRecipe | null>(null);
+  const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0);
   const [brewingHistory, setBrewingHistory] = useState<BrewingHistory[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filters, setFilters] = useState<RecipeFilters>({
@@ -342,7 +343,16 @@ export default function Home() {
   }, [allRecipes]);
 
   const handleRecipeSelect = (recipe: BrewfatherRecipe) => {
+    const index = filteredRecipes.findIndex(r => r._id === recipe._id);
     setSelectedRecipe(recipe);
+    setSelectedRecipeIndex(index >= 0 ? index : 0);
+  };
+  
+  const handleModalNavigation = (newIndex: number) => {
+    if (newIndex >= 0 && newIndex < filteredRecipes.length) {
+      setSelectedRecipe(filteredRecipes[newIndex]);
+      setSelectedRecipeIndex(newIndex);
+    }
   };
 
   const handleRecipeImport = (recipe: BrewfatherRecipe) => {
@@ -499,7 +509,14 @@ export default function Home() {
         <RecipeDetailModal
           recipe={selectedRecipe}
           isOpen={!!selectedRecipe}
-          onClose={() => setSelectedRecipe(null)}
+          onClose={() => {
+            setSelectedRecipe(null);
+            setSelectedRecipeIndex(0);
+          }}
+          brewingHistory={brewingHistory.filter(h => h.recipeId === selectedRecipe._id)}
+          recipes={filteredRecipes}
+          currentIndex={selectedRecipeIndex}
+          onNavigate={handleModalNavigation}
         />
       )}
     </div>

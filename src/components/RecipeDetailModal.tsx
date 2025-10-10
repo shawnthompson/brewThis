@@ -1,14 +1,75 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrewfatherRecipe } from '@/types';
+
+interface BrewingHistoryData {
+  recipeId: string;
+  dateBrewed: string;
+  notes?: string;
+  rating?: number;
+  batchId?: string;
+  batchNo?: number;
+  status?: string;
+  measuredOg?: number;
+  measuredFg?: number;
+  measuredAbv?: number;
+}
 
 interface RecipeDetailModalProps {
   recipe: BrewfatherRecipe;
   isOpen: boolean;
   onClose: () => void;
+  brewingHistory?: BrewingHistoryData[];
+  // Navigation props
+  recipes?: BrewfatherRecipe[];
+  currentIndex?: number;
+  onNavigate?: (index: number) => void;
 }
 
-const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, isOpen, onClose }) => {
+const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ 
+  recipe, 
+  isOpen, 
+  onClose, 
+  brewingHistory = [],
+  recipes = [],
+  currentIndex = 0,
+  onNavigate
+}) => {
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft' && currentIndex > 0 && onNavigate) {
+        onNavigate(currentIndex - 1);
+      } else if (e.key === 'ArrowRight' && currentIndex < recipes.length - 1 && onNavigate) {
+        onNavigate(currentIndex + 1);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentIndex, recipes.length, onClose, onNavigate]);
+  
+  // Block body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+  
   if (!isOpen) return null;
+  
+  const canNavigatePrevious = currentIndex > 0 && onNavigate && recipes.length > 1;
+  const canNavigateNext = currentIndex < recipes.length - 1 && onNavigate && recipes.length > 1;
+  const hasBrewingHistory = brewingHistory.length > 0;
 
   const formatDate = (timestamp: { _seconds: number } | null | undefined) => {
     if (!timestamp) return 'Not specified';
@@ -28,10 +89,10 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, isOpen, o
 
   return (
     <>
-      {/* Modal Backdrop */}
+      {/* Modal Backdrop - blocks all background interaction */}
       <div 
         className="modal-backdrop fade show" 
-        style={{ zIndex: 1040 }}
+        style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.8)' }}
         onClick={onClose}
       />
       
@@ -40,21 +101,55 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, isOpen, o
         className="modal fade show d-block" 
         style={{ zIndex: 1050 }}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="modal-dialog modal-xl modal-dialog-scrollable">
           <div className="modal-content">
             {/* Modal Header */}
             <div className="modal-header bg-primary text-white">
-              <h4 className="modal-title">
-                <i className="fas fa-flask me-2"></i>
-                {recipe.name}
-              </h4>
-              <button 
-                type="button" 
-                className="btn-close btn-close-white" 
-                onClick={onClose}
-                aria-label="Close"
-              />
+              <div className="d-flex align-items-center w-100">
+                {/* Previous Button */}
+                <button 
+                  type="button" 
+                  className="btn btn-outline-light me-3"
+                  onClick={() => onNavigate && onNavigate(currentIndex - 1)}
+                  disabled={!canNavigatePrevious}
+                  title="Previous recipe (←)"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                
+                {/* Title */}
+                <h4 className="modal-title flex-grow-1 mb-0">
+                  <i className="fas fa-flask me-2"></i>
+                  {recipe.name}
+                  {recipes.length > 1 && (
+                    <small className="ms-2 opacity-75">
+                      ({currentIndex + 1} of {recipes.length})
+                    </small>
+                  )}
+                </h4>
+                
+                {/* Next Button */}
+                <button 
+                  type="button" 
+                  className="btn btn-outline-light me-3"
+                  onClick={() => onNavigate && onNavigate(currentIndex + 1)}
+                  disabled={!canNavigateNext}
+                  title="Next recipe (→)"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+                
+                {/* Close Button */}
+                <button 
+                  type="button" 
+                  className="btn-close btn-close-white" 
+                  onClick={onClose}
+                  aria-label="Close"
+                />
+              </div>
             </div>
             
             {/* Modal Body */}
@@ -199,6 +294,92 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, isOpen, o
                         <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
                           {recipe.notes}
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Brewing History */}
+                {hasBrewingHistory && (
+                  <div className="col-12">
+                    <div className="card">
+                      <div className="card-header bg-light">
+                        <h5 className="card-title mb-0">
+                          <i className="fas fa-history me-2"></i>
+                          Brewing History ({brewingHistory.length})
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row g-3">
+                          {brewingHistory.map((history, index) => {
+                            const brewDate = new Date(history.dateBrewed).toLocaleDateString();
+                            return (
+                              <div key={history.batchId || index} className="col-md-6">
+                                <div className="border rounded p-3 bg-light">
+                                  <div className="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                      <h6 className="mb-1">
+                                        <span className="badge bg-primary me-2">
+                                          {history.batchNo ? `Batch #${history.batchNo}` : `Batch ${index + 1}`}
+                                        </span>
+                                        {history.status && (
+                                          <span className={`badge ${
+                                            history.status === 'Completed' ? 'bg-success' :
+                                            history.status === 'Conditioning' ? 'bg-warning text-dark' :
+                                            history.status === 'Fermenting' ? 'bg-info' : 'bg-secondary'
+                                          }`}>
+                                            {history.status}
+                                          </span>
+                                        )}
+                                      </h6>
+                                      <p className="text-muted small mb-2">
+                                        <i className="fas fa-calendar me-1"></i>
+                                        Brewed on {brewDate}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Measured Stats */}
+                                  {(history.measuredOg || history.measuredFg || history.measuredAbv) && (
+                                    <div className="row g-2 mb-2">
+                                      <div className="col-12">
+                                        <small className="text-muted fw-bold">Measured Stats:</small>
+                                      </div>
+                                      {history.measuredOg && (
+                                        <div className="col-4">
+                                          <small className="d-block text-muted">OG</small>
+                                          <strong>{history.measuredOg.toFixed(3)}</strong>
+                                        </div>
+                                      )}
+                                      {history.measuredFg && (
+                                        <div className="col-4">
+                                          <small className="d-block text-muted">FG</small>
+                                          <strong>{history.measuredFg.toFixed(3)}</strong>
+                                        </div>
+                                      )}
+                                      {history.measuredAbv && (
+                                        <div className="col-4">
+                                          <small className="d-block text-muted">ABV</small>
+                                          <strong className="text-success">{history.measuredAbv.toFixed(1)}%</strong>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Batch Notes */}
+                                  {history.notes && (
+                                    <div className="mt-2">
+                                      <small className="text-muted fw-bold">Batch Notes:</small>
+                                      <p className="small mb-0 mt-1" style={{ whiteSpace: 'pre-wrap' }}>
+                                        {history.notes}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
