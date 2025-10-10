@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-brewthis_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brewthis_password}
+      POSTGRES_DB: ${POSTGRES_DB:-brewthis}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brewthis_user} -d ${POSTGRES_DB:-brewthis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application (Development)
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-brewthis_user}:${POSTGRES_PASSWORD:-brewthis_password}@db:5432/${POSTGRES_DB:-brewthis}
+      - BREWFATHER_USERID=${BREWFATHER_USERID}
+      - BREWFATHER_API=${BREWFATHER_API}  
+      - BREWFATHER_API_URL=${BREWFATHER_API_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+      - ./package.json:/app/package.json:ro
+
+  # Development service (for development with hot reloading)
+  app-dev:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-brewthis_user}:${POSTGRES_PASSWORD:-brewthis_password}@db:5432/${POSTGRES_DB:-brewthis}
+      - BREWFATHER_USERID=${BREWFATHER_USERID}
+      - BREWFATHER_API=${BREWFATHER_API}
+      - BREWFATHER_API_URL=${BREWFATHER_API_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:

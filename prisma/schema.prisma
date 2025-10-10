@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User management (for future authentication)
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String?  @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  recipes          Recipe[]
+  brewingSessions  BrewingSession[]
+  inventoryItems   InventoryItem[]
+
+  @@map("users")
+}
+
+// Recipe management
+model Recipe {
+  id               Int      @id @default(autoincrement())
+  brewfatherId     String?  @unique @map("brewfather_id")
+  name             String
+  style            String?
+  description      String?
+  abv              Decimal? @db.Decimal(4, 2)
+  ibu              Int?
+  originalGravity  Decimal? @map("original_gravity") @db.Decimal(5, 3)
+  finalGravity     Decimal? @map("final_gravity") @db.Decimal(5, 3)
+  color            Int? // SRM
+  batchSize        Decimal? @map("batch_size") @db.Decimal(8, 2) // Liters
+  boilTime         Int?     @map("boil_time") // Minutes
+  efficiency       Decimal? @db.Decimal(5, 2) // Percentage
+  isPublic         Boolean  @default(false) @map("is_public")
+  userId           Int?     @map("user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // JSON fields for complex data
+  ingredients      Json? // Array of ingredients with amounts
+  mashProfile      Json? @map("mash_profile") // Mash steps
+  fermentation     Json? // Fermentation profile
+  notes            String?
+
+  // Relations
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brewingSessions BrewingSession[]
+
+  @@map("recipes")
+}
+
+// Brewing session tracking
+model BrewingSession {
+  id          Int      @id @default(autoincrement())
+  recipeId    Int      @map("recipe_id")
+  userId      Int      @map("user_id")
+  brewDate    DateTime @map("brew_date")
+  batchNumber String?  @map("batch_number")
+  status      String   @default("planned") // planned, brewing, fermenting, conditioning, completed
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Actual measurements
+  actualOg    Decimal? @map("actual_og") @db.Decimal(5, 3)
+  actualFg    Decimal? @map("actual_fg") @db.Decimal(5, 3)
+  actualAbv   Decimal? @map("actual_abv") @db.Decimal(4, 2)
+  actualIbu   Int?     @map("actual_ibu")
+  
+  // Timing
+  brewStartTime  DateTime? @map("brew_start_time")
+  brewEndTime    DateTime? @map("brew_end_time")
+  fermentStart   DateTime? @map("ferment_start")
+  fermentEnd     DateTime? @map("ferment_end")
+  packagingDate  DateTime? @map("packaging_date")
+
+  // Relations
+  recipe            Recipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fermentationLogs  FermentationLog[]
+  tastingNotes      TastingNote[]
+
+  @@map("brewing_sessions")
+}
+
+// Fermentation monitoring (RAPT/TILT integration)
+model FermentationLog {
+  id              Int      @id @default(autoincrement())
+  brewingSessionId Int     @map("brewing_session_id")
+  timestamp       DateTime
+  temperature     Decimal? @db.Decimal(5, 2) // Celsius
+  gravity         Decimal? @db.Decimal(5, 3)
+  ph              Decimal? @db.Decimal(4, 2)
+  pressure        Decimal? @db.Decimal(6, 2) // PSI
+  source          String   // 'RAPT', 'TILT', 'MANUAL'
+  deviceId        String?  @map("device_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  brewingSession BrewingSession @relation(fields: [brewingSessionId], references: [id], onDelete: Cascade)
+
+  @@map("fermentation_logs")
+}
+
+// Inventory management
+model InventoryItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    String   // 'grain', 'hops', 'yeast', 'other'
+  type        String?  // Specific type within category
+  amount      Decimal  @db.Decimal(10, 3)
+  unit        String   // 'kg', 'g', 'oz', 'packets'
+  supplier    String?
+  lotNumber   String?  @map("lot_number")
+  expiryDate  DateTime? @map("expiry_date")
+  cost        Decimal? @db.Decimal(8, 2)
+  notes       String?
+  userId      Int      @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_items")
+}
+
+// Tasting notes and evaluation
+model TastingNote {
+  id              Int      @id @default(autoincrement())
+  brewingSessionId Int     @map("brewing_session_id")
+  tastingDate     DateTime @map("tasting_date")
+  appearance      String?
+  aroma           String?
+  flavor          String?
+  mouthfeel       String?
+  overall         String?
+  rating          Int?     // 1-10 scale
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  brewingSession BrewingSession @relation(fields: [brewingSessionId], references: [id], onDelete: Cascade)
+
+  @@map("tasting_notes")
+}
