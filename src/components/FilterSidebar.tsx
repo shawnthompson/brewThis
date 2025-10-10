@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
 
+interface RecipeFilters {
+  text: string;
+  styles: string[];
+  types: string[];
+  hops: string[];
+  abvRange: [number, number];
+  ibuRange: [number, number];
+  brewingStatus: 'all' | 'brewed' | 'not-brewed';
+  sortBy: 'name' | 'abv' | 'ibu' | 'og' | '_created';
+  sortOrder: 'asc' | 'desc';
+}
+
 interface FilterSidebarProps {
   filters: {
     text: string;
@@ -15,7 +27,7 @@ interface FilterSidebarProps {
   availableStyles: string[];
   availableTypes: string[];
   availableHops: string[];
-  onFilterChange: (key: string, value: any) => void;
+  onFilterChange: (key: keyof RecipeFilters, value: string | string[] | number[] | 'all' | 'brewed' | 'not-brewed' | 'name' | 'abv' | 'ibu' | 'og' | '_created' | 'asc' | 'desc') => void;
   onClearFilters: () => void;
   isOpen: boolean;
   onToggle: () => void;
@@ -52,7 +64,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }));
   };
 
-  const toggleArrayFilter = (filterKey: string, value: string, currentArray: string[]) => {
+  const toggleArrayFilter = (filterKey: keyof RecipeFilters, value: string, currentArray: string[]) => {
     const newArray = currentArray.includes(value)
       ? currentArray.filter(item => item !== value)
       : [...currentArray, value];
@@ -62,7 +74,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const renderCheckboxList = (
     items: string[],
     selectedItems: string[],
-    filterKey: string,
+    filterKey: keyof RecipeFilters,
     maxHeight = '200px'
   ) => (
     <div style={{ maxHeight, overflowY: 'auto' }} className="border rounded p-2">

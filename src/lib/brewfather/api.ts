@@ -192,7 +192,7 @@ export class BrewfatherService {
 
     try {
       const response = await this.makeRequest(`/v2/batches?${searchParams.toString()}`);
-      const batches: any[] = await response.json();
+      const batches: BrewfatherRecipe[] = await response.json();
       
       return {
         recipes: batches, // Using the same interface for now
@@ -210,12 +210,28 @@ export class BrewfatherService {
   /**
    * Get a specific batch by ID
    */
-  async getBatchById(id: string): Promise<any> {
+  async getBatchById(id: string): Promise<BrewfatherRecipe> {
     try {
       const response = await this.makeRequest(`/v2/batches/${id}`);
       return await response.json();
     } catch (error) {
       console.error(`Error fetching batch ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a recipe in your collection
+   */
+  async updateRecipe(recipeId: string, updates: Partial<BrewfatherRecipe>): Promise<BrewfatherRecipe> {
+    try {
+      const response = await this.makeRequest(`/v2/recipes/${recipeId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      return await response.json();
+    } catch (error) {
+      console.error(`Error updating recipe ${recipeId}:`, error);
       throw error;
     }
   }

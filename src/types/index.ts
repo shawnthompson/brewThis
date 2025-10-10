@@ -2,22 +2,27 @@
 export interface BrewfatherRecipe {
   _id: string;
   name: string;
+  type?: string; // Recipe type (e.g., "All Grain", "Extract", "Partial Mash")
   style?: {
     name: string;
-    categoryNumber?: string;
+    categoryNumber?: string | number;
     styleLetter?: string;
+    category?: string;
+    styleGuide?: string;
   };
   abv?: number;
   ibu?: number;
   og?: number;
   fg?: number;
   color?: number;
+  attenuation?: number;
   batchSize?: number;
   boilTime?: number;
   efficiency?: number;
   author?: string;
   created?: string;
   updated?: string;
+  _created?: { _seconds: number }; // Brewfather timestamp format
   description?: string;
   notes?: string;
   tags?: string[];
@@ -36,7 +41,7 @@ export interface BrewfatherRecipe {
 }
 
 export interface BrewfatherFermentable {
-  _id: string;
+  _id?: string;
   name: string;
   origin?: string;
   type?: string;
@@ -49,9 +54,10 @@ export interface BrewfatherFermentable {
 }
 
 export interface BrewfatherHop {
-  _id: string;
+  _id?: string;
   name: string;
   origin?: string;
+  type?: string;
   alpha?: number;
   beta?: number;
   amount?: number;
@@ -63,9 +69,10 @@ export interface BrewfatherHop {
 }
 
 export interface BrewfatherYeast {
-  _id: string;
+  _id?: string;
   name: string;
   laboratory?: string;
+  productId?: string;
   type?: string;
   form?: string;
   attenuation?: number;

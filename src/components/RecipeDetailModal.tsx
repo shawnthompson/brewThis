@@ -10,7 +10,7 @@ interface RecipeDetailModalProps {
 const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ recipe, isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: { _seconds: number } | null | undefined) => {
     if (!timestamp) return 'Not specified';
     const date = new Date(timestamp._seconds * 1000);
     return date.toLocaleDateString();

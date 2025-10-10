@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import RecipeCard from '@/components/RecipeCard';
 import RecipeDetailModal from '@/components/RecipeDetailModal';
 import FilterSidebar from '@/components/FilterSidebar';
-import LoadingSpinner, { BrewingSpinner } from '@/components/LoadingSpinner';
+import { BrewingSpinner } from '@/components/LoadingSpinner';
 import { BrewfatherRecipe } from '@/types';
 
 interface RecipeFilters {
@@ -121,9 +121,9 @@ export default function Home() {
   };
 
   // Check if recipe has been brewed
-  const hasBeenBrewed = (recipeId: string) => {
+  const hasBeenBrewed = useCallback((recipeId: string) => {
     return brewingHistory.some(history => history.recipeId === recipeId);
-  };
+  }, [brewingHistory]);
 
   // Client-side filtering and sorting
   const filteredRecipes = useMemo(() => {
@@ -135,7 +135,6 @@ export default function Home() {
       filtered = filtered.filter(recipe => 
         recipe.name?.toLowerCase().includes(searchTerm) ||
         recipe.style?.name?.toLowerCase().includes(searchTerm) ||
-        recipe.style?.category?.toLowerCase().includes(searchTerm) ||
         recipe.notes?.toLowerCase().includes(searchTerm) ||
         recipe.author?.toLowerCase().includes(searchTerm) ||
         recipe.fermentables?.some(fermentable => 
@@ -192,7 +191,7 @@ export default function Home() {
     
     // Sort recipes
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
+      let aValue: string | number, bValue: string | number;
       
       switch (filters.sortBy) {
         case 'name':
@@ -228,7 +227,7 @@ export default function Home() {
     });
     
     return filtered;
-  }, [allRecipes, filters]);
+  }, [allRecipes, filters, hasBeenBrewed]);
   
   // Extract unique styles and types for filter options
   const availableStyles = useMemo(() => {
@@ -274,7 +273,7 @@ export default function Home() {
     // TODO: Implement recipe import
   };
 
-  const updateFilter = (key: keyof RecipeFilters, value: any) => {
+  const updateFilter = (key: keyof RecipeFilters, value: string | string[] | number[] | 'all' | 'brewed' | 'not-brewed' | 'name' | 'abv' | 'ibu' | 'og' | '_created' | 'asc' | 'desc') => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
