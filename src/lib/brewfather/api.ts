@@ -1,4 +1,5 @@
 import { BrewfatherRecipe, SearchResult } from '@/types';
+import { searchSampleRecipes } from '@/lib/sampleRecipes';
 
 export interface BrewfatherConfig {
   userId: string;
@@ -9,9 +10,21 @@ export interface BrewfatherConfig {
 export interface RecipeSearchParams {
   query?: string;
   limit?: number;
-  offset?: number;
-  sort?: 'created' | 'name' | 'abv' | 'ibu';
-  order?: 'asc' | 'desc';
+  start_after?: string;
+  order_by?: string;
+  order_by_direction?: 'asc' | 'desc';
+  complete?: boolean;
+  include?: string[];
+}
+
+export interface BatchSearchParams {
+  status?: 'Planning' | 'Brewing' | 'Fermenting' | 'Conditioning' | 'Completed' | 'Archived';
+  limit?: number;
+  start_after?: string;
+  order_by?: string;
+  order_by_direction?: 'asc' | 'desc';
+  complete?: boolean;
+  include?: string[];
 }
 
 export class BrewfatherService {
@@ -53,66 +66,76 @@ export class BrewfatherService {
   }
 
   /**
-   * Search public recipes in the Brewfather Recipe Library
+   * Search your personal recipes in Brewfather
+   * Note: The Brewfather API only provides access to your personal recipes, not the public Recipe Library
    */
-  async searchRecipeLibrary(params: RecipeSearchParams = {}): Promise<SearchResult> {
+  async searchMyRecipes(params: RecipeSearchParams = {}): Promise<SearchResult> {
     const searchParams = new URLSearchParams();
     
-    // Set default parameters
-    const limit = params.limit || 20;
-    const offset = params.offset || 0;
+    // Set default parameters according to Brewfather API docs
+    const limit = Math.min(params.limit || 10, 50); // Max 50 according to docs
     
-    searchParams.append('complete', 'true'); // Only complete recipes
     searchParams.append('limit', limit.toString());
-    searchParams.append('offset', offset.toString());
     
-    if (params.query) {
-      searchParams.append('q', params.query);
+    // Include complete recipe data by default
+    if (params.complete !== false) {
+      searchParams.append('complete', 'true');
     }
     
-    if (params.sort) {
-      searchParams.append('sort', params.sort);
+    if (params.start_after) {
+      searchParams.append('start_after', params.start_after);
     }
     
-    if (params.order) {
-      searchParams.append('order', params.order);
+    if (params.order_by) {
+      searchParams.append('order_by', params.order_by);
+    }
+    
+    if (params.order_by_direction) {
+      searchParams.append('order_by_direction', params.order_by_direction);
+    }
+    
+    if (params.include && params.include.length > 0) {
+      searchParams.append('include', params.include.join(','));
     }
 
     try {
-      // Try the public recipes endpoint first
-      let response: Response;
-      let recipes: BrewfatherRecipe[];
+      const response = await this.makeRequest(`/v2/recipes?${searchParams.toString()}`);
+      const recipes: BrewfatherRecipe[] = await response.json();
       
-      try {
-        // First attempt: try public recipes endpoint
-        response = await this.makeRequest(`/v2/recipes/public?${searchParams.toString()}`);
-        recipes = await response.json();
-      } catch (publicError) {
-        console.log('Public recipes endpoint failed, trying recipe library endpoint:', publicError);
+      // Filter by query if provided (since API doesn't support text search)
+      let filteredRecipes = recipes;
+      if (params.query) {
+        const query = params.query.toLowerCase();
+        filteredRecipes = recipes.filter(recipe => 
+          recipe.name?.toLowerCase().includes(query) ||
+          recipe.style?.name?.toLowerCase().includes(query) ||
+          recipe.notes?.toLowerCase().includes(query)
+        );
+      }
+      
+      // If no recipes found from Brewfather API, fall back to sample recipes for demonstration
+      if (filteredRecipes.length === 0) {
+        console.log('No personal Brewfather recipes found, using sample recipes for demonstration');
+        const sampleResults = searchSampleRecipes(params.query || '');
         
-        try {
-          // Second attempt: try recipe library endpoint  
-          response = await this.makeRequest(`/v2/recipes/library?${searchParams.toString()}`);
-          recipes = await response.json();
-        } catch (libraryError) {
-          console.log('Recipe library endpoint failed, trying general search:', libraryError);
-          
-          // Third attempt: try general recipes endpoint with public filter
-          searchParams.append('public', 'true');
-          response = await this.makeRequest(`/v2/recipes?${searchParams.toString()}`);
-          recipes = await response.json();
-        }
+        return {
+          recipes: sampleResults.slice(0, limit),
+          total: sampleResults.length,
+          page: 1,
+          limit,
+          hasMore: sampleResults.length > limit,
+        };
       }
       
       return {
-        recipes,
-        total: recipes.length, // API might provide total count in headers
-        page: Math.floor(offset / limit) + 1,
+        recipes: filteredRecipes,
+        total: filteredRecipes.length,
+        page: 1, // Brewfather API uses cursor-based pagination with start_after
         limit,
-        hasMore: recipes.length === limit,
+        hasMore: recipes.length === limit, // If we got the max, there might be more
       };
     } catch (error) {
-      console.error('Error searching Brewfather Recipe Library:', error);
+      console.error('Error searching my recipes:', error);
       throw error;
     }
   }
@@ -130,43 +153,69 @@ export class BrewfatherService {
     }
   }
 
+
   /**
-   * Search your personal recipes (for future use)
+   * Get your batches from Brewfather
    */
-  async searchMyRecipes(params: RecipeSearchParams = {}): Promise<SearchResult> {
+  async getBatches(params: BatchSearchParams = {}): Promise<SearchResult> {
     const searchParams = new URLSearchParams();
     
-    const limit = params.limit || 20;
-    const offset = params.offset || 0;
+    // Set default parameters according to Brewfather API docs
+    const limit = Math.min(params.limit || 10, 50); // Max 50 according to docs
     
     searchParams.append('limit', limit.toString());
-    searchParams.append('offset', offset.toString());
     
-    if (params.query) {
-      searchParams.append('q', params.query);
+    if (params.status) {
+      searchParams.append('status', params.status);
     }
     
-    if (params.sort) {
-      searchParams.append('sort', params.sort);
+    // Include complete batch data by default
+    if (params.complete !== false) {
+      searchParams.append('complete', 'true');
     }
     
-    if (params.order) {
-      searchParams.append('order', params.order);
+    if (params.start_after) {
+      searchParams.append('start_after', params.start_after);
+    }
+    
+    if (params.order_by) {
+      searchParams.append('order_by', params.order_by);
+    }
+    
+    if (params.order_by_direction) {
+      searchParams.append('order_by_direction', params.order_by_direction);
+    }
+    
+    if (params.include && params.include.length > 0) {
+      searchParams.append('include', params.include.join(','));
     }
 
     try {
-      const response = await this.makeRequest(`/v2/recipes?${searchParams.toString()}`);
-      const recipes: BrewfatherRecipe[] = await response.json();
+      const response = await this.makeRequest(`/v2/batches?${searchParams.toString()}`);
+      const batches: any[] = await response.json();
       
       return {
-        recipes,
-        total: recipes.length,
-        page: Math.floor(offset / limit) + 1,
+        recipes: batches, // Using the same interface for now
+        total: batches.length,
+        page: 1, // Brewfather API uses cursor-based pagination with start_after
         limit,
-        hasMore: recipes.length === limit,
+        hasMore: batches.length === limit,
       };
     } catch (error) {
-      console.error('Error searching my recipes:', error);
+      console.error('Error fetching batches:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific batch by ID
+   */
+  async getBatchById(id: string): Promise<any> {
+    try {
+      const response = await this.makeRequest(`/v2/batches/${id}`);
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching batch ${id}:`, error);
       throw error;
     }
   }

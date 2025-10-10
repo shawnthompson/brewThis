@@ -7,27 +7,17 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const sort = searchParams.get('sort') as 'created' | 'name' | 'abv' | 'ibu' || 'created';
-    const order = searchParams.get('order') as 'asc' | 'desc' || 'desc';
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const start_after = searchParams.get('start_after') || undefined;
+    const order_by = searchParams.get('order_by') || undefined;
+    const order_by_direction = searchParams.get('order_by_direction') as 'asc' | 'desc' || 'asc';
 
     // Validate parameters
-    if (limit > 100 || limit < 1) {
+    if (limit > 50 || limit < 1) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Limit must be between 1 and 100',
-        } as ApiResponse<never>,
-        { status: 400 }
-      );
-    }
-
-    if (offset < 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Offset must be non-negative',
+          error: 'Limit must be between 1 and 50 (Brewfather API maximum)',
         } as ApiResponse<never>,
         { status: 400 }
       );
@@ -36,13 +26,14 @@ export async function GET(request: NextRequest) {
     // Create Brewfather service
     const brewfatherService = createBrewfatherService();
 
-    // Search Recipe Library (public recipes)
-    const result = await brewfatherService.searchRecipeLibrary({
+    // Search your personal recipes (Brewfather API only provides personal recipes, not public library)
+    const result = await brewfatherService.searchMyRecipes({
       query,
       limit,
-      offset,
-      sort,
-      order,
+      start_after,
+      order_by,
+      order_by_direction,
+      complete: true,
     });
 
     return NextResponse.json({

@@ -25,10 +25,9 @@ export default function Home() {
     try {
       const searchParams = new URLSearchParams({
         q: query,
-        limit: '20',
-        offset: '0',
-        sort: filters.sortBy || 'created',
-        order: filters.sortOrder || 'desc',
+        limit: '10',
+        order_by: filters.sortBy || '_id',
+        order_by_direction: filters.sortOrder || 'desc',
       });
       
       const response = await fetch(`/api/recipes/search?${searchParams.toString()}`);
@@ -97,8 +96,12 @@ export default function Home() {
                 Find Your Perfect Recipe
               </h1>
               <p className="lead text-muted">
-                Search thousands of brewing recipes from the Brewfather Recipe Library
+                Search your personal brewing recipes from Brewfather
               </p>
+              <div className="alert alert-info" role="alert">
+                <i className="fas fa-info-circle me-2"></i>
+                <strong>Note:</strong> This searches your personal Brewfather recipes. If no personal recipes are found, sample recipes will be shown for demonstration purposes.
+              </div>
             </div>
             
             {/* Search Interface */}
@@ -201,9 +204,9 @@ export default function Home() {
                 <i className="fas fa-beer-mug-empty text-primary" style={{ fontSize: '5rem', opacity: 0.3 }}></i>
                 <h3 className="text-muted mt-4">Ready to brew something amazing?</h3>
                 <p className="text-muted">
-                  Enter a search term above to find recipes from the Brewfather community.
+                  Enter a search term above to find recipes from your Brewfather collection.
                   <br />
-                  You can search by recipe name, beer style, or even specific ingredients.
+                  You can search by recipe name, beer style, or brewing notes.
                 </p>
                 
                 {/* Quick Search Buttons */}
