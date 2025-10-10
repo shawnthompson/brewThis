@@ -27,6 +27,8 @@ interface FilterSidebarProps {
   availableStyles: string[];
   availableTypes: string[];
   availableHops: string[];
+  maxAbv: number;
+  maxIbu: number;
   onFilterChange: (key: keyof RecipeFilters, value: string | string[] | number[] | 'all' | 'brewed' | 'not-brewed' | 'name' | 'abv' | 'ibu' | 'og' | '_created' | 'asc' | 'desc') => void;
   onClearFilters: () => void;
   isOpen: boolean;
@@ -40,6 +42,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   availableStyles,
   availableTypes,
   availableHops,
+  maxAbv,
+  maxIbu,
   onFilterChange,
   onClearFilters,
   isOpen,
@@ -262,7 +266,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="range"
                       className="form-range"
                       min="0"
-                      max="15"
+                      max={maxAbv}
                       step="0.1"
                       value={filters.abvRange[0]}
                       onChange={(e) => onFilterChange('abvRange', [parseFloat(e.target.value), filters.abvRange[1]])}
@@ -271,7 +275,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="range"
                       className="form-range"
                       min="0"
-                      max="15"
+                      max={maxAbv}
                       step="0.1"
                       value={filters.abvRange[1]}
                       onChange={(e) => onFilterChange('abvRange', [filters.abvRange[0], parseFloat(e.target.value)])}
@@ -287,7 +291,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="range"
                       className="form-range"
                       min="0"
-                      max="120"
+                      max={maxIbu}
                       value={filters.ibuRange[0]}
                       onChange={(e) => onFilterChange('ibuRange', [parseInt(e.target.value), filters.ibuRange[1]])}
                     />
@@ -295,7 +299,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="range"
                       className="form-range"
                       min="0"
-                      max="120"
+                      max={maxIbu}
                       value={filters.ibuRange[1]}
                       onChange={(e) => onFilterChange('ibuRange', [filters.ibuRange[0], parseInt(e.target.value)])}
                     />

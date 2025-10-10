@@ -41,17 +41,39 @@ export default function Home() {
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0);
   const [brewingHistory, setBrewingHistory] = useState<BrewingHistory[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Dynamic filter ranges based on actual recipe data
+  const maxAbv = useMemo(() => {
+    if (allRecipes.length === 0) return 15;
+    return Math.ceil(Math.max(...allRecipes.map(r => r.abv || 0)));
+  }, [allRecipes]);
+  
+  const maxIbu = useMemo(() => {
+    if (allRecipes.length === 0) return 120;
+    return Math.ceil(Math.max(...allRecipes.map(r => r.ibu || 0)));
+  }, [allRecipes]);
+  
   const [filters, setFilters] = useState<RecipeFilters>({
     text: '',
     styles: [],
     types: [],
     hops: [],
-    abvRange: [0, 15],
-    ibuRange: [0, 120],
+    abvRange: [0, 15], // Will be updated when recipes load
+    ibuRange: [0, 120], // Will be updated when recipes load
     brewingStatus: 'all',
     sortBy: 'name',
     sortOrder: 'asc',
   });
+  
+  // Update filter ranges when recipes change
+  useEffect(() => {
+    if (allRecipes.length > 0) {
+      setFilters(prev => ({
+        ...prev,
+        abvRange: [0, maxAbv],
+        ibuRange: [0, maxIbu]
+      }));
+    }
+  }, [maxAbv, maxIbu, allRecipes.length]);
 
   // Sync batches with brewing history
   const syncBatchesWithBrewingHistory = (batches: BrewfatherBatch[]) => {
@@ -370,8 +392,8 @@ export default function Home() {
       styles: [],
       types: [],
       hops: [],
-      abvRange: [0, 15],
-      ibuRange: [0, 120],
+      abvRange: [0, maxAbv], // Use dynamic max based on actual recipes
+      ibuRange: [0, maxIbu], // Use dynamic max based on actual recipes
       brewingStatus: 'all',
       sortBy: 'name',
       sortOrder: 'asc',
@@ -389,6 +411,8 @@ export default function Home() {
         availableStyles={availableStyles}
         availableTypes={availableTypes}
         availableHops={availableHops}
+        maxAbv={maxAbv}
+        maxIbu={maxIbu}
         onFilterChange={updateFilter}
         onClearFilters={clearFilters}
         isOpen={sidebarOpen}
