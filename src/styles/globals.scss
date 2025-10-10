@@ -1,0 +1,246 @@
+// Import Bootstrap CSS
+@import "bootstrap/scss/bootstrap";
+
+// Import Font Awesome CSS
+@import "@fortawesome/fontawesome-free/css/all.css";
+
+// Custom brewing app variables
+:root {
+  --brew-primary: #8B4513;      // Saddle Brown - brewing/malt color
+  --brew-secondary: #DAA520;     // Goldenrod - beer color
+  --brew-success: #228B22;       // Forest Green - hops color
+  --brew-info: #4682B4;          // Steel Blue - water color
+  --brew-warning: #FF8C00;       // Dark Orange - caramel/amber
+  --brew-danger: #DC143C;        // Crimson - error states
+  --brew-dark: #2F2F2F;          // Dark gray for text
+  --brew-light: #F8F9FA;         // Light background
+  
+  // Custom brewing gradients
+  --brew-bg-gradient: linear-gradient(135deg, #8B4513 0%, #DAA520 100%);
+  --brew-card-gradient: linear-gradient(145deg, #FFFFFF 0%, #F8F9FA 100%);
+}
+
+// Custom Bootstrap theme overrides
+$primary: #8B4513;
+$secondary: #DAA520;
+$success: #228B22;
+$info: #4682B4;
+$warning: #FF8C00;
+$danger: #DC143C;
+
+// Global styles
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background-color: var(--brew-light);
+  color: var(--brew-dark);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  
+  &:hover {
+    color: var(--brew-primary);
+    text-decoration: underline;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Custom component styles
+.brew-card {
+  background: var(--brew-card-gradient);
+  border: 1px solid rgba(139, 69, 19, 0.1);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.brew-badge {
+  background: linear-gradient(45deg, var(--brew-primary), var(--brew-secondary));
+  color: white;
+  border: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+// Navigation styles
+.brew-nav {
+  background: var(--brew-bg-gradient);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  .navbar-brand {
+    font-weight: bold;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    .brand-icon {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    
+    &:hover,
+    &.active {
+      color: white !important;
+    }
+  }
+}
+
+// Recipe card styles
+.recipe-card {
+  .recipe-image {
+    background: linear-gradient(135deg, #DAA520 0%, #8B4513 100%);
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+  
+  .recipe-stats {
+    display: flex;
+    gap: 1rem;
+    margin: 0.5rem 0;
+    
+    .stat {
+      text-align: center;
+      flex: 1;
+      
+      .stat-value {
+        font-weight: bold;
+        color: var(--brew-primary);
+        font-size: 1.1rem;
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+}
+
+// Search interface styles
+.search-container {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.search-input-group {
+  position: relative;
+  
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    z-index: 2;
+  }
+  
+  .search-input {
+    padding-left: 3rem;
+    border: 2px solid #e9ecef;
+    border-radius: 0.375rem;
+    font-size: 1.1rem;
+    transition: border-color 0.3s ease;
+    
+    &:focus {
+      border-color: var(--brew-primary);
+      box-shadow: 0 0 0 0.2rem rgba(139, 69, 19, 0.25);
+      outline: none;
+    }
+  }
+}
+
+// Filter styles
+.filter-group {
+  background: #f8f9fa;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+// Loading states
+.loading-spinner {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 0.25rem solid rgba(139, 69, 19, 0.2);
+  border-radius: 50%;
+  border-top-color: var(--brew-primary);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .recipe-stats {
+    flex-wrap: wrap;
+    
+    .stat {
+      flex-basis: 50%;
+      margin-bottom: 0.5rem;
+    }
+  }
+  
+  .search-container {
+    padding: 1rem;
+  }
+  
+  .filter-group {
+    padding: 0.75rem;
+  }
+}
+
+// Print styles for brewing day
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .recipe-instructions {
+    page-break-inside: avoid;
+  }
+  
+  .ingredient-list {
+    page-break-inside: avoid;
+  }
+}

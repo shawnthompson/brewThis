@@ -1,102 +1,253 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState } from 'react';
+import Navigation from '@/components/Navigation';
+import RecipeCard from '@/components/RecipeCard';
+import LoadingSpinner, { BrewingSpinner } from '@/components/LoadingSpinner';
+import { BrewfatherRecipe, SearchFilters } from '@/types';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [recipes, setRecipes] = useState<BrewfatherRecipe[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [filters] = useState<Partial<SearchFilters>>({
+    sortBy: 'name',
+    sortOrder: 'asc',
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) return;
+    
+    setIsLoading(true);
+    setHasSearched(true);
+    
+    try {
+      // TODO: Replace with actual API call
+      console.log('Searching for:', query, filters);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock data for now
+      const mockRecipes: BrewfatherRecipe[] = [
+        {
+          _id: '1',
+          name: 'Talus Pale Ale',
+          style: { name: 'American Pale Ale' },
+          abv: 5.2,
+          ibu: 35,
+          og: 1.052,
+          fg: 1.012,
+          color: 6,
+          batchSize: 23,
+          boilTime: 60,
+          efficiency: 75,
+          author: 'You',
+          description: 'A hoppy pale ale showcasing Talus hops with citrus and floral notes.',
+          tags: ['hoppy', 'citrus', 'american'],
+          public: false
+        },
+        {
+          _id: '2', 
+          name: 'Session IPA',
+          style: { name: 'Session IPA' },
+          abv: 4.1,
+          ibu: 45,
+          og: 1.045,
+          fg: 1.008,
+          color: 4,
+          batchSize: 23,
+          boilTime: 60,
+          efficiency: 72,
+          author: 'Brewmaster Joe',
+          description: 'A lower alcohol IPA with big hop flavor and aroma.',
+          tags: ['session', 'hoppy', 'ipa'],
+          public: true
+        }
+      ];
+      
+      setRecipes(mockRecipes);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRecipeSelect = (recipe: BrewfatherRecipe) => {
+    console.log('Selected recipe:', recipe);
+    // TODO: Navigate to recipe detail page
+  };
+
+  const handleRecipeImport = (recipe: BrewfatherRecipe) => {
+    console.log('Import recipe:', recipe);
+    // TODO: Implement recipe import
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch(searchQuery);
+    }
+  };
+
+  return (
+    <div className="min-vh-100 d-flex flex-column">
+      <Navigation />
+      
+      <div className="container-fluid flex-grow-1 py-4">
+        {/* Hero Section */}
+        <div className="row justify-content-center mb-5">
+          <div className="col-lg-8">
+            <div className="text-center mb-4">
+              <h1 className="display-4 mb-3">
+                <i className="fas fa-search me-3 text-primary"></i>
+                Find Your Perfect Recipe
+              </h1>
+              <p className="lead text-muted">
+                Search thousands of brewing recipes from Brewfather community
+              </p>
+            </div>
+            
+            {/* Search Interface */}
+            <div className="search-container">
+              <div className="search-input-group mb-3">
+                <i className="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  className="form-control form-control-lg search-input"
+                  placeholder="Search recipes by name, style, or ingredients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading}
+                />
+              </div>
+              
+              <div className="d-flex gap-2 justify-content-center">
+                <button 
+                  className="btn btn-primary btn-lg px-4"
+                  onClick={() => handleSearch(searchQuery)}
+                  disabled={isLoading || !searchQuery.trim()}
+                >
+                  {isLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" className="me-2" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-search me-2"></i>
+                      Search Recipes
+                    </>
+                  )}
+                </button>
+                
+                <button className="btn btn-outline-secondary" disabled>
+                  <i className="fas fa-filter me-2"></i>
+                  Filters
+                  <span className="badge bg-secondary ms-2" style={{ fontSize: '0.6rem' }}>
+                    Soon
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+        {/* Results Section */}
+        {isLoading && (
+          <div className="row justify-content-center">
+            <div className="col-lg-6">
+              <BrewingSpinner size="lg" className="py-5" />
+            </div>
+          </div>
+        )}
+
+        {!isLoading && hasSearched && (
+          <div className="row justify-content-center">
+            <div className="col-lg-10">
+              {recipes.length > 0 ? (
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                      <i className="fas fa-list me-2 text-primary"></i>
+                      Search Results ({recipes.length})
+                    </h3>
+                  </div>
+                  
+                  <div className="row g-4">
+                    {recipes.map((recipe) => (
+                      <div key={recipe._id} className="col-md-6 col-lg-4">
+                        <RecipeCard 
+                          recipe={recipe}
+                          onSelect={handleRecipeSelect}
+                          onImport={handleRecipeImport}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-5">
+                  <i className="fas fa-search text-muted" style={{ fontSize: '4rem' }}></i>
+                  <h4 className="text-muted mt-3">No recipes found</h4>
+                  <p className="text-muted">
+                    Try adjusting your search terms or check your spelling
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Welcome Message */}
+        {!hasSearched && (
+          <div className="row justify-content-center">
+            <div className="col-lg-8">
+              <div className="text-center py-5">
+                <i className="fas fa-beer-mug-empty text-primary" style={{ fontSize: '5rem', opacity: 0.3 }}></i>
+                <h3 className="text-muted mt-4">Ready to brew something amazing?</h3>
+                <p className="text-muted">
+                  Enter a search term above to find recipes from the Brewfather community.
+                  <br />
+                  You can search by recipe name, beer style, or even specific ingredients.
+                </p>
+                
+                {/* Quick Search Buttons */}
+                <div className="mt-4">
+                  <h5 className="text-muted mb-3">Popular searches:</h5>
+                  <div className="d-flex gap-2 justify-content-center flex-wrap">
+                    {['IPA', 'Pale Ale', 'Stout', 'Wheat Beer', 'Lager'].map((style) => (
+                      <button
+                        key={style}
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={() => {
+                          setSearchQuery(style);
+                          handleSearch(style);
+                        }}
+                      >
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Footer */}
+      <footer className="bg-light py-4 mt-5">
+        <div className="container text-center text-muted">
+          <p className="mb-0">
+            <i className="fas fa-beer me-2"></i>
+            BrewThis - Your brewing companion
+            <span className="mx-2">•</span>
+            Powered by Brewfather API
+          </p>
+        </div>
       </footer>
     </div>
   );
