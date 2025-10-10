@@ -1,74 +1,272 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Navigation from '@/components/Navigation';
 import RecipeCard from '@/components/RecipeCard';
+import RecipeDetailModal from '@/components/RecipeDetailModal';
+import FilterSidebar from '@/components/FilterSidebar';
 import LoadingSpinner, { BrewingSpinner } from '@/components/LoadingSpinner';
-import { BrewfatherRecipe, SearchFilters } from '@/types';
+import { BrewfatherRecipe } from '@/types';
+
+interface RecipeFilters {
+  text: string;
+  styles: string[];
+  types: string[];
+  hops: string[];
+  abvRange: [number, number];
+  ibuRange: [number, number];
+  brewingStatus: 'all' | 'brewed' | 'not-brewed';
+  sortBy: 'name' | 'abv' | 'ibu' | 'og' | '_created';
+  sortOrder: 'asc' | 'desc';
+}
+
+interface BrewingHistory {
+  recipeId: string;
+  dateBrewed: string;
+  notes?: string;
+  rating?: number;
+}
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [recipes, setRecipes] = useState<BrewfatherRecipe[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [filters] = useState<Partial<SearchFilters>>({
+  const [allRecipes, setAllRecipes] = useState<BrewfatherRecipe[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedRecipe, setSelectedRecipe] = useState<BrewfatherRecipe | null>(null);
+  const [brewingHistory, setBrewingHistory] = useState<BrewingHistory[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filters, setFilters] = useState<RecipeFilters>({
+    text: '',
+    styles: [],
+    types: [],
+    hops: [],
+    abvRange: [0, 15],
+    ibuRange: [0, 120],
+    brewingStatus: 'all',
     sortBy: 'name',
     sortOrder: 'asc',
   });
 
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) return;
-    
-    setIsLoading(true);
-    setHasSearched(true);
-    
-    try {
-      const searchParams = new URLSearchParams({
-        q: query,
-        limit: '10',
-        order_by: filters.sortBy || '_id',
-        order_by_direction: filters.sortOrder || 'desc',
-      });
+  // Load all recipes on component mount
+  useEffect(() => {
+    const loadAllRecipes = async () => {
+      setIsLoading(true);
       
-      const response = await fetch(`/api/recipes/search?${searchParams.toString()}`);
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || result.error || 'Search failed');
-      }
-      
-      setRecipes(result.data.recipes || []);
-      
-      // Log successful search for debugging
-      console.log(`Found ${result.data.recipes?.length || 0} recipes for "${query}"`);
-      
-    } catch (error) {
-      console.error('Recipe search error:', error);
-      
-      // Show user-friendly error message
-      let errorMessage = 'Failed to search recipes. Please try again.';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Server configuration error')) {
-          errorMessage = 'Search service is temporarily unavailable.';
-        } else if (error.message.includes('External API error')) {
-          errorMessage = 'Unable to connect to recipe database. Please try again later.';
+      try {
+        // Load with high limit to get all personal recipes
+        const searchParams = new URLSearchParams({
+          limit: '50', // Max allowed by Brewfather API
+          order_by: '_created',
+          order_by_direction: 'desc',
+        });
+        
+        const response = await fetch(`/api/recipes/search?${searchParams.toString()}`);
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || result.error || 'Failed to load recipes');
         }
+        
+        setAllRecipes(result.data.recipes || []);
+        
+        // Log successful load for debugging
+        console.log(`Loaded ${result.data.recipes?.length || 0} recipes from Brewfather`);
+        
+      } catch (error) {
+        console.error('Recipe loading error:', error);
+        
+        // Show user-friendly error message
+        let errorMessage = 'Failed to load recipes. Please try again.';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('Server configuration error')) {
+            errorMessage = 'Recipe service is temporarily unavailable.';
+          } else if (error.message.includes('External API error')) {
+            errorMessage = 'Unable to connect to Brewfather. Please try again later.';
+          }
+        }
+        
+        // For now, we'll just log the error. In the future, we could show a toast/alert
+        console.error('User-facing error:', errorMessage);
+        
+        // Set empty results on error
+        setAllRecipes([]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // For now, we'll just log the error. In the future, we could show a toast/alert
-      console.error('User-facing error:', errorMessage);
-      
-      // Set empty results on error
-      setRecipes([]);
-    } finally {
-      setIsLoading(false);
+    };
+    
+    loadAllRecipes();
+    // Load brewing history from localStorage
+    const loadBrewingHistory = () => {
+      try {
+        const stored = localStorage.getItem('brewingHistory');
+        if (stored) {
+          setBrewingHistory(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Error loading brewing history:', error);
+      }
+    };
+    
+    loadBrewingHistory();
+  }, []);
+
+  // Save brewing history to localStorage
+  const saveBrewingHistory = (history: BrewingHistory[]) => {
+    try {
+      localStorage.setItem('brewingHistory', JSON.stringify(history));
+      setBrewingHistory(history);
+    } catch (error) {
+      console.error('Error saving brewing history:', error);
     }
   };
 
+  // Check if recipe has been brewed
+  const hasBeenBrewed = (recipeId: string) => {
+    return brewingHistory.some(history => history.recipeId === recipeId);
+  };
+
+  // Client-side filtering and sorting
+  const filteredRecipes = useMemo(() => {
+    let filtered = [...allRecipes];
+    
+    // Text filter
+    if (filters.text.trim()) {
+      const searchTerm = filters.text.toLowerCase();
+      filtered = filtered.filter(recipe => 
+        recipe.name?.toLowerCase().includes(searchTerm) ||
+        recipe.style?.name?.toLowerCase().includes(searchTerm) ||
+        recipe.style?.category?.toLowerCase().includes(searchTerm) ||
+        recipe.notes?.toLowerCase().includes(searchTerm) ||
+        recipe.author?.toLowerCase().includes(searchTerm) ||
+        recipe.fermentables?.some(fermentable => 
+          fermentable.name?.toLowerCase().includes(searchTerm)
+        ) ||
+        recipe.hops?.some(hop => 
+          hop.name?.toLowerCase().includes(searchTerm)
+        )
+      );
+    }
+    
+    // Style filter
+    if (filters.styles.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.style?.name && filters.styles.includes(recipe.style.name)
+      );
+    }
+    
+    // Type filter
+    if (filters.types.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.type && filters.types.includes(recipe.type)
+      );
+    }
+    
+    // Hop filter
+    if (filters.hops.length > 0) {
+      filtered = filtered.filter(recipe => 
+        recipe.hops && recipe.hops.some(hop => 
+          hop.name && filters.hops.includes(hop.name)
+        )
+      );
+    }
+    
+    // Brewing status filter
+    if (filters.brewingStatus !== 'all') {
+      filtered = filtered.filter(recipe => {
+        const brewed = hasBeenBrewed(recipe._id);
+        return filters.brewingStatus === 'brewed' ? brewed : !brewed;
+      });
+    }
+    
+    // ABV range filter
+    filtered = filtered.filter(recipe => {
+      const abv = recipe.abv || 0;
+      return abv >= filters.abvRange[0] && abv <= filters.abvRange[1];
+    });
+    
+    // IBU range filter
+    filtered = filtered.filter(recipe => {
+      const ibu = recipe.ibu || 0;
+      return ibu >= filters.ibuRange[0] && ibu <= filters.ibuRange[1];
+    });
+    
+    // Sort recipes
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (filters.sortBy) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'abv':
+          aValue = a.abv || 0;
+          bValue = b.abv || 0;
+          break;
+        case 'ibu':
+          aValue = a.ibu || 0;
+          bValue = b.ibu || 0;
+          break;
+        case 'og':
+          aValue = a.og || 0;
+          bValue = b.og || 0;
+          break;
+        case '_created':
+          aValue = a._created?._seconds || 0;
+          bValue = b._created?._seconds || 0;
+          break;
+        default:
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+      }
+      
+      if (filters.sortOrder === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+    
+    return filtered;
+  }, [allRecipes, filters]);
+  
+  // Extract unique styles and types for filter options
+  const availableStyles = useMemo(() => {
+    const styles = new Set<string>();
+    allRecipes.forEach(recipe => {
+      if (recipe.style?.name) {
+        styles.add(recipe.style.name);
+      }
+    });
+    return Array.from(styles).sort();
+  }, [allRecipes]);
+  
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>();
+    allRecipes.forEach(recipe => {
+      if (recipe.type) {
+        types.add(recipe.type);
+      }
+    });
+    return Array.from(types).sort();
+  }, [allRecipes]);
+  
+  const availableHops = useMemo(() => {
+    const hops = new Set<string>();
+    allRecipes.forEach(recipe => {
+      if (recipe.hops) {
+        recipe.hops.forEach(hop => {
+          if (hop.name) {
+            hops.add(hop.name);
+          }
+        });
+      }
+    });
+    return Array.from(hops).sort();
+  }, [allRecipes]);
+
   const handleRecipeSelect = (recipe: BrewfatherRecipe) => {
-    console.log('Selected recipe:', recipe);
-    // TODO: Navigate to recipe detail page
+    setSelectedRecipe(recipe);
   };
 
   const handleRecipeImport = (recipe: BrewfatherRecipe) => {
@@ -76,174 +274,170 @@ export default function Home() {
     // TODO: Implement recipe import
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch(searchQuery);
-    }
+  const updateFilter = (key: keyof RecipeFilters, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      text: '',
+      styles: [],
+      types: [],
+      hops: [],
+      abvRange: [0, 15],
+      ibuRange: [0, 120],
+      brewingStatus: 'all',
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+  };
+  
+  const markAsBrewed = (recipeId: string, notes?: string, rating?: number) => {
+    const newHistory = [...brewingHistory, {
+      recipeId,
+      dateBrewed: new Date().toISOString().split('T')[0],
+      notes,
+      rating
+    }];
+    saveBrewingHistory(newHistory);
+  };
+  
+  const unmarkAsBrewed = (recipeId: string) => {
+    const newHistory = brewingHistory.filter(h => h.recipeId !== recipeId);
+    saveBrewingHistory(newHistory);
   };
 
   return (
-    <div className="min-vh-100 d-flex flex-column">
+    <div className="min-vh-100">
       <Navigation />
       
-      <div className="container-fluid flex-grow-1 py-4">
-        {/* Hero Section */}
-        <div className="row justify-content-center mb-5">
-          <div className="col-lg-8">
-            <div className="text-center mb-4">
-              <h1 className="display-4 mb-3">
-                <i className="fas fa-search me-3 text-primary"></i>
-                Find Your Perfect Recipe
-              </h1>
-              <p className="lead text-muted">
-                Search your personal brewing recipes from Brewfather
-              </p>
-              <div className="alert alert-info" role="alert">
-                <i className="fas fa-info-circle me-2"></i>
-                <strong>Note:</strong> This searches your personal Brewfather recipes. If no personal recipes are found, sample recipes will be shown for demonstration purposes.
-              </div>
-            </div>
-            
-            {/* Search Interface */}
-            <div className="search-container">
-              <div className="search-input-group mb-3">
-                <i className="fas fa-search search-icon"></i>
-                <input
-                  type="text"
-                  className="form-control form-control-lg search-input"
-                  placeholder="Search recipes by name, style, or ingredients..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isLoading}
-                />
-              </div>
-              
-              <div className="d-flex gap-2 justify-content-center">
-                <button 
-                  className="btn btn-primary btn-lg px-4"
-                  onClick={() => handleSearch(searchQuery)}
-                  disabled={isLoading || !searchQuery.trim()}
-                >
-                  {isLoading ? (
-                    <>
-                      <LoadingSpinner size="sm" className="me-2" />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-search me-2"></i>
-                      Search Recipes
-                    </>
+      {/* Filter Sidebar */}
+      <FilterSidebar
+        filters={filters}
+        availableStyles={availableStyles}
+        availableTypes={availableTypes}
+        availableHops={availableHops}
+        onFilterChange={updateFilter}
+        onClearFilters={clearFilters}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        totalRecipes={allRecipes.length}
+        filteredCount={filteredRecipes.length}
+      />
+      
+      {/* Main Content */}
+      <div className="main-content" style={{ marginLeft: sidebarOpen ? '320px' : '0', transition: 'margin-left 0.3s' }}>
+        <div className="container-fluid py-4">
+          {/* Header Section */}
+          <div className="row mb-4">
+            <div className="col">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="d-flex align-items-center">
+                  {!sidebarOpen && (
+                    <button
+                      className="btn btn-outline-secondary me-3"
+                      onClick={() => setSidebarOpen(true)}
+                    >
+                      <i className="fas fa-filter"></i>
+                    </button>
                   )}
-                </button>
-                
-                <button className="btn btn-outline-secondary" disabled>
-                  <i className="fas fa-filter me-2"></i>
-                  Filters
-                  <span className="badge bg-secondary ms-2" style={{ fontSize: '0.6rem' }}>
-                    Soon
-                  </span>
-                </button>
+                  <h2 className="mb-0">
+                    <i className="fas fa-flask me-2 text-primary"></i>
+                    My Recipe Collection
+                  </h2>
+                </div>
+                {!isLoading && allRecipes.length > 0 && (
+                  <div className="text-muted">
+                    <i className="fas fa-check-circle me-2 text-success"></i>
+                    <strong>{allRecipes.length}</strong> recipes loaded
+                  </div>
+                )}
               </div>
+              <p className="text-muted mb-0">
+                Browse and filter your personal brewing recipes from Brewfather
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Results Section */}
+        {/* Loading State */}
         {isLoading && (
           <div className="row justify-content-center">
             <div className="col-lg-6">
               <BrewingSpinner size="lg" className="py-5" />
-            </div>
-          </div>
-        )}
-
-        {!isLoading && hasSearched && (
-          <div className="row justify-content-center">
-            <div className="col-lg-10">
-              {recipes.length > 0 ? (
-                <>
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h3>
-                      <i className="fas fa-list me-2 text-primary"></i>
-                      Search Results ({recipes.length})
-                    </h3>
-                  </div>
-                  
-                  <div className="row g-4">
-                    {recipes.map((recipe) => (
-                      <div key={recipe._id} className="col-md-6 col-lg-4">
-                        <RecipeCard 
-                          recipe={recipe}
-                          onSelect={handleRecipeSelect}
-                          onImport={handleRecipeImport}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-5">
-                  <i className="fas fa-search text-muted" style={{ fontSize: '4rem' }}></i>
-                  <h4 className="text-muted mt-3">No recipes found</h4>
-                  <p className="text-muted">
-                    Try adjusting your search terms or check your spelling
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Welcome Message */}
-        {!hasSearched && (
-          <div className="row justify-content-center">
-            <div className="col-lg-8">
-              <div className="text-center py-5">
-                <i className="fas fa-beer-mug-empty text-primary" style={{ fontSize: '5rem', opacity: 0.3 }}></i>
-                <h3 className="text-muted mt-4">Ready to brew something amazing?</h3>
-                <p className="text-muted">
-                  Enter a search term above to find recipes from your Brewfather collection.
-                  <br />
-                  You can search by recipe name, beer style, or brewing notes.
-                </p>
-                
-                {/* Quick Search Buttons */}
-                <div className="mt-4">
-                  <h5 className="text-muted mb-3">Popular searches:</h5>
-                  <div className="d-flex gap-2 justify-content-center flex-wrap">
-                    {['IPA', 'Pale Ale', 'Stout', 'Wheat Beer', 'Lager'].map((style) => (
-                      <button
-                        key={style}
-                        className="btn btn-outline-primary btn-sm"
-                        onClick={() => {
-                          setSearchQuery(style);
-                          handleSearch(style);
-                        }}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="text-center">
+                <h5 className="text-muted">Loading your recipes from Brewfather...</h5>
               </div>
             </div>
           </div>
         )}
+
+          {/* Recipe Results */}
+          {!isLoading && allRecipes.length > 0 && (
+            <div className="row">
+              <div className="col">
+                {filteredRecipes.length > 0 ? (
+                  <div className="row g-4">
+                    {filteredRecipes.map((recipe) => (
+                      <div key={recipe._id} className="col-md-6 col-xl-4">
+                        <RecipeCard 
+                          recipe={recipe}
+                          onSelect={handleRecipeSelect}
+                          onImport={handleRecipeImport}
+                          hasBeenBrewed={hasBeenBrewed(recipe._id)}
+                          onMarkAsBrewed={markAsBrewed}
+                          onUnmarkAsBrewed={unmarkAsBrewed}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5">
+                    <i className="fas fa-filter text-muted" style={{ fontSize: '4rem' }}></i>
+                    <h4 className="text-muted mt-3">No recipes match your filters</h4>
+                    <p className="text-muted">
+                      Try adjusting your filters or clearing them to see all recipes
+                    </p>
+                    <button className="btn btn-outline-primary" onClick={clearFilters}>
+                      <i className="fas fa-eraser me-2"></i>
+                      Clear All Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && allRecipes.length === 0 && (
+            <div className="row justify-content-center">
+              <div className="col-lg-8">
+                <div className="text-center py-5">
+                  <i className="fas fa-beer-mug-empty text-muted" style={{ fontSize: '5rem', opacity: 0.3 }}></i>
+                  <h3 className="text-muted mt-4">No recipes found in your Brewfather account</h3>
+                  <p className="text-muted">
+                    Use the Brewfather mobile app to browse and save recipes from the Recipe Library,
+                    <br />
+                    then refresh this page to see them here.
+                  </p>
+                  <button className="btn btn-outline-primary" onClick={() => window.location.reload()}>
+                    <i className="fas fa-refresh me-2"></i>
+                    Refresh Page
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
-      {/* Footer */}
-      <footer className="bg-light py-4 mt-5">
-        <div className="container text-center text-muted">
-          <p className="mb-0">
-            <i className="fas fa-beer me-2"></i>
-            BrewThis - Your brewing companion
-            <span className="mx-2">•</span>
-            Powered by Brewfather API
-          </p>
-        </div>
-      </footer>
+      {/* Recipe Detail Modal */}
+      {selectedRecipe && (
+        <RecipeDetailModal
+          recipe={selectedRecipe}
+          isOpen={!!selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
+        />
+      )}
     </div>
   );
 }

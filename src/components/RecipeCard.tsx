@@ -3,12 +3,21 @@
 import React from 'react';
 import { RecipeCardProps } from '@/types';
 
+interface ExtendedRecipeCardProps extends RecipeCardProps {
+  hasBeenBrewed?: boolean;
+  onMarkAsBrewed?: (recipeId: string) => void;
+  onUnmarkAsBrewed?: (recipeId: string) => void;
+}
+
 export default function RecipeCard({ 
   recipe, 
   onSelect, 
-  onImport, 
+  onImport,
+  hasBeenBrewed = false,
+  onMarkAsBrewed,
+  onUnmarkAsBrewed,
   className = '' 
-}: RecipeCardProps) {
+}: ExtendedRecipeCardProps) {
   
   const formatAbv = (abv?: number) => abv ? `${abv.toFixed(1)}%` : 'N/A';
   const formatIbu = (ibu?: number) => ibu ? Math.round(ibu) : 'N/A';
@@ -127,25 +136,71 @@ export default function RecipeCard({
         )}
         
         {/* Actions */}
-        <div className="mt-auto d-flex gap-2">
-          {onSelect && (
-            <button 
-              className="btn btn-outline-primary btn-sm flex-fill"
-              onClick={handleCardClick}
-            >
-              <i className="fas fa-eye me-1"></i>
-              View Details
-            </button>
+        <div className="mt-auto">
+          {/* Brewing Status */}
+          {hasBeenBrewed && (
+            <div className="mb-2">
+              <span className="badge bg-success">
+                <i className="fas fa-check me-1"></i>
+                Brewed
+              </span>
+            </div>
           )}
-          {onImport && (
-            <button 
-              className="btn btn-primary btn-sm"
-              onClick={handleImportClick}
-              title="Import to My Recipes"
-            >
-              <i className="fas fa-download"></i>
-            </button>
-          )}
+          
+          {/* Action Buttons */}
+          <div className="d-flex gap-2 mb-2">
+            {onSelect && (
+              <button 
+                className="btn btn-outline-primary btn-sm flex-fill"
+                onClick={handleCardClick}
+              >
+                <i className="fas fa-eye me-1"></i>
+                View Details
+              </button>
+            )}
+            {onImport && (
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={handleImportClick}
+                title="Import to My Recipes"
+              >
+                <i className="fas fa-download"></i>
+              </button>
+            )}
+          </div>
+          
+          {/* Brewing Action */}
+          <div className="d-flex gap-2">
+            {hasBeenBrewed ? (
+              onUnmarkAsBrewed && (
+                <button 
+                  className="btn btn-outline-secondary btn-sm w-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnmarkAsBrewed(recipe._id);
+                  }}
+                  title="Mark as not brewed"
+                >
+                  <i className="fas fa-undo me-1"></i>
+                  Mark as Not Brewed
+                </button>
+              )
+            ) : (
+              onMarkAsBrewed && (
+                <button 
+                  className="btn btn-success btn-sm w-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMarkAsBrewed(recipe._id);
+                  }}
+                  title="Mark as brewed"
+                >
+                  <i className="fas fa-check me-1"></i>
+                  Mark as Brewed
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
       
