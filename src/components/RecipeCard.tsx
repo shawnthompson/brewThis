@@ -19,8 +19,6 @@ interface BrewingHistoryData {
 interface ExtendedRecipeCardProps extends RecipeCardProps {
   hasBeenBrewed?: boolean;
   brewingHistory?: BrewingHistoryData[];
-  onMarkAsBrewed?: (recipeId: string) => void;
-  onUnmarkAsBrewed?: (recipeId: string) => void;
 }
 
 export default function RecipeCard({ 
@@ -29,8 +27,6 @@ export default function RecipeCard({
   onImport,
   hasBeenBrewed = false,
   brewingHistory = [],
-  onMarkAsBrewed,
-  onUnmarkAsBrewed,
   className = '' 
 }: ExtendedRecipeCardProps) {
   
@@ -202,50 +198,8 @@ export default function RecipeCard({
               </button>
             )}
           </div>
-          
-          {/* Brewing Action */}
-          <div className="d-flex gap-2">
-            {hasBeenBrewed ? (
-              onUnmarkAsBrewed && (
-                <button 
-                  className="btn btn-outline-secondary btn-sm w-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnmarkAsBrewed(recipe._id);
-                  }}
-                  title="Mark as not brewed"
-                >
-                  <i className="fas fa-undo me-1"></i>
-                  Mark as Not Brewed
-                </button>
-              )
-            ) : (
-              onMarkAsBrewed && (
-                <button 
-                  className="btn btn-success btn-sm w-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsBrewed(recipe._id);
-                  }}
-                  title="Mark as brewed"
-                >
-                  <i className="fas fa-check me-1"></i>
-                  Mark as Brewed
-                </button>
-              )
-            )}
-          </div>
         </div>
       </div>
-      
-      {/* Public indicator */}
-      {recipe.public && (
-        <div className="position-absolute top-0 end-0 mt-2 me-2">
-          <span className="badge bg-success" title="Public recipe">
-            <i className="fas fa-globe"></i>
-          </span>
-        </div>
-      )}
     </div>
   );
 }

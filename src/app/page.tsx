@@ -57,18 +57,25 @@ export default function Home() {
     if (!batches || batches.length === 0) return;
     
     const brewingHistoryFromBatches: BrewingHistory[] = batches
-      .filter(batch => batch.recipeId && batch.brewDate) // Only batches with recipe and brew date
-      .map(batch => ({
-        recipeId: batch.recipeId!,
-        dateBrewed: batch.brewDate!,
-        batchId: batch._id,
-        batchNo: batch.batchNo,
-        status: batch.status,
-        notes: batch.notes,
-        measuredOg: batch.measuredOg,
-        measuredFg: batch.measuredFg,
-        measuredAbv: batch.measuredAbv
-      }));
+      .filter(batch => batch.recipe?._id && batch.brewDate) // Only batches with recipe and brew date
+      .map(batch => {
+        // Convert brewDate from timestamp to ISO date string
+        const brewDate = typeof batch.brewDate === 'number' 
+          ? new Date(batch.brewDate).toISOString().split('T')[0]
+          : batch.brewDate!;
+          
+        return {
+          recipeId: batch.recipe!._id,
+          dateBrewed: brewDate,
+          batchId: batch._id,
+          batchNo: batch.batchNo,
+          status: batch.status,
+          notes: batch.batchNotes, // Use batchNotes field from batch
+          measuredOg: batch.measuredOg,
+          measuredFg: batch.measuredFg,
+          measuredAbv: batch.measuredAbv
+        };
+      });
     
     console.log(`Found ${brewingHistoryFromBatches.length} brewed recipes from ${batches.length} batches`);
     
@@ -189,15 +196,6 @@ export default function Home() {
     loadStoredBrewingHistory();
   }, []);
 
-  // Save brewing history to localStorage
-  const saveBrewingHistory = (history: BrewingHistory[]) => {
-    try {
-      localStorage.setItem('brewingHistory', JSON.stringify(history));
-      setBrewingHistory(history);
-    } catch (error) {
-      console.error('Error saving brewing history:', error);
-    }
-  };
 
   // Check if recipe has been brewed
   const hasBeenBrewed = useCallback((recipeId: string) => {
@@ -370,20 +368,6 @@ export default function Home() {
     });
   };
   
-  const markAsBrewed = (recipeId: string, notes?: string, rating?: number) => {
-    const newHistory = [...brewingHistory, {
-      recipeId,
-      dateBrewed: new Date().toISOString().split('T')[0],
-      notes,
-      rating
-    }];
-    saveBrewingHistory(newHistory);
-  };
-  
-  const unmarkAsBrewed = (recipeId: string) => {
-    const newHistory = brewingHistory.filter(h => h.recipeId !== recipeId);
-    saveBrewingHistory(newHistory);
-  };
 
   return (
     <div className="min-vh-100">
@@ -465,8 +449,6 @@ export default function Home() {
                             onImport={handleRecipeImport}
                             hasBeenBrewed={hasBeenBrewed(recipe._id)}
                             brewingHistory={recipeBrewingHistory}
-                            onMarkAsBrewed={markAsBrewed}
-                            onUnmarkAsBrewed={unmarkAsBrewed}
                           />
                         </div>
                       );

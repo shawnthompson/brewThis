@@ -197,6 +197,7 @@ export interface BrewfatherBatch {
   measuredFg?: number;
   measuredAbv?: number;
   notes?: string;
+  batchNotes?: string;
   _created?: { _seconds: number };
   _timestamp_ms?: number;
   estimatedOg?: number;
