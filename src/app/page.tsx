@@ -6,7 +6,7 @@ import RecipeCard from '@/components/RecipeCard';
 import RecipeDetailModal from '@/components/RecipeDetailModal';
 import FilterSidebar from '@/components/FilterSidebar';
 import { BrewingSpinner } from '@/components/LoadingSpinner';
-import { BrewfatherRecipe } from '@/types';
+import { BrewfatherRecipe, BrewfatherBatch } from '@/types';
 
 interface RecipeFilters {
   text: string;
@@ -25,10 +25,17 @@ interface BrewingHistory {
   dateBrewed: string;
   notes?: string;
   rating?: number;
+  batchId?: string;
+  batchNo?: number;
+  status?: string;
+  measuredOg?: number;
+  measuredFg?: number;
+  measuredAbv?: number;
 }
 
 export default function Home() {
   const [allRecipes, setAllRecipes] = useState<BrewfatherRecipe[]>([]);
+  const [, setAllBatches] = useState<BrewfatherBatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState<BrewfatherRecipe | null>(null);
   const [brewingHistory, setBrewingHistory] = useState<BrewingHistory[]>([]);
@@ -44,6 +51,37 @@ export default function Home() {
     sortBy: 'name',
     sortOrder: 'asc',
   });
+
+  // Sync batches with brewing history
+  const syncBatchesWithBrewingHistory = (batches: BrewfatherBatch[]) => {
+    if (!batches || batches.length === 0) return;
+    
+    const brewingHistoryFromBatches: BrewingHistory[] = batches
+      .filter(batch => batch.recipeId && batch.brewDate) // Only batches with recipe and brew date
+      .map(batch => ({
+        recipeId: batch.recipeId!,
+        dateBrewed: batch.brewDate!,
+        batchId: batch._id,
+        batchNo: batch.batchNo,
+        status: batch.status,
+        notes: batch.notes,
+        measuredOg: batch.measuredOg,
+        measuredFg: batch.measuredFg,
+        measuredAbv: batch.measuredAbv
+      }));
+    
+    console.log(`Found ${brewingHistoryFromBatches.length} brewed recipes from ${batches.length} batches`);
+    
+    // Update brewing history with batch data
+    setBrewingHistory(brewingHistoryFromBatches);
+    
+    // Also save to localStorage as backup
+    try {
+      localStorage.setItem('brewingHistory', JSON.stringify(brewingHistoryFromBatches));
+    } catch (error) {
+      console.error('Error saving brewing history to localStorage:', error);
+    }
+  };
 
   // Load all recipes on component mount
   useEffect(() => {
@@ -65,10 +103,12 @@ export default function Home() {
           throw new Error(result.message || result.error || 'Failed to load recipes');
         }
         
-        setAllRecipes(result.data.recipes || []);
+        const recipes = result.data.recipes || [];
+        setAllRecipes(recipes);
         
         // Log successful load for debugging
-        console.log(`Loaded ${result.data.recipes?.length || 0} recipes from Brewfather`);
+        console.log(`Loaded ${recipes.length} recipes from Brewfather`);
+        return recipes;
         
       } catch (error) {
         console.error('Recipe loading error:', error);
@@ -89,25 +129,64 @@ export default function Home() {
         
         // Set empty results on error
         setAllRecipes([]);
+        return [];
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadAllRecipes();
-    // Load brewing history from localStorage
-    const loadBrewingHistory = () => {
+    const loadAllBatches = async () => {
       try {
-        const stored = localStorage.getItem('brewingHistory');
-        if (stored) {
-          setBrewingHistory(JSON.parse(stored));
+        console.log('Loading batches from Brewfather...');
+        const response = await fetch('/api/batches?limit=50&complete=true&order_by=_created&order_by_direction=desc');
+        const result = await response.json();
+        
+        if (result.success && result.data?.recipes) {
+          setAllBatches(result.data.recipes);
+          console.log(`Loaded ${result.data.recipes.length} batches from Brewfather`);
+          return result.data.recipes;
+        } else {
+          console.warn('No batches found or API error:', result.message);
+          return [];
         }
       } catch (error) {
-        console.error('Error loading brewing history:', error);
+        console.error('Error loading batches:', error);
+        return [];
       }
     };
     
-    loadBrewingHistory();
+    const loadAndSyncData = async () => {
+      // Load recipes and batches in parallel
+      const [, batches] = await Promise.all([
+        loadAllRecipes(),
+        loadAllBatches()
+      ]);
+      
+      // Sync batches with brewing history
+      syncBatchesWithBrewingHistory(batches);
+    };
+    
+    loadAndSyncData();
+    
+    // Load any existing localStorage brewing history as fallback
+    const loadStoredBrewingHistory = () => {
+      try {
+        const stored = localStorage.getItem('brewingHistory');
+        if (stored) {
+          const storedHistory = JSON.parse(stored);
+          // Merge with any batch-synced history
+          setBrewingHistory(prev => {
+            const existingIds = new Set(prev.map(h => h.recipeId));
+            const newFromStorage = storedHistory.filter((h: BrewingHistory) => !existingIds.has(h.recipeId));
+            return [...prev, ...newFromStorage];
+          });
+        }
+      } catch (error) {
+        console.error('Error loading stored brewing history:', error);
+      }
+    };
+    
+    loadStoredBrewingHistory();
   }, []);
 
   // Save brewing history to localStorage
@@ -376,18 +455,22 @@ export default function Home() {
               <div className="col">
                 {filteredRecipes.length > 0 ? (
                   <div className="row g-4">
-                    {filteredRecipes.map((recipe) => (
-                      <div key={recipe._id} className="col-md-6 col-xl-4">
-                        <RecipeCard 
-                          recipe={recipe}
-                          onSelect={handleRecipeSelect}
-                          onImport={handleRecipeImport}
-                          hasBeenBrewed={hasBeenBrewed(recipe._id)}
-                          onMarkAsBrewed={markAsBrewed}
-                          onUnmarkAsBrewed={unmarkAsBrewed}
-                        />
-                      </div>
-                    ))}
+                    {filteredRecipes.map((recipe) => {
+                      const recipeBrewingHistory = brewingHistory.filter(h => h.recipeId === recipe._id);
+                      return (
+                        <div key={recipe._id} className="col-md-6 col-xl-4">
+                          <RecipeCard 
+                            recipe={recipe}
+                            onSelect={handleRecipeSelect}
+                            onImport={handleRecipeImport}
+                            hasBeenBrewed={hasBeenBrewed(recipe._id)}
+                            brewingHistory={recipeBrewingHistory}
+                            onMarkAsBrewed={markAsBrewed}
+                            onUnmarkAsBrewed={unmarkAsBrewed}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-5">

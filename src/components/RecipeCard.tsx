@@ -3,8 +3,22 @@
 import React from 'react';
 import { RecipeCardProps } from '@/types';
 
+interface BrewingHistoryData {
+  recipeId: string;
+  dateBrewed: string;
+  notes?: string;
+  rating?: number;
+  batchId?: string;
+  batchNo?: number;
+  status?: string;
+  measuredOg?: number;
+  measuredFg?: number;
+  measuredAbv?: number;
+}
+
 interface ExtendedRecipeCardProps extends RecipeCardProps {
   hasBeenBrewed?: boolean;
+  brewingHistory?: BrewingHistoryData[];
   onMarkAsBrewed?: (recipeId: string) => void;
   onUnmarkAsBrewed?: (recipeId: string) => void;
 }
@@ -14,6 +28,7 @@ export default function RecipeCard({
   onSelect, 
   onImport,
   hasBeenBrewed = false,
+  brewingHistory = [],
   onMarkAsBrewed,
   onUnmarkAsBrewed,
   className = '' 
@@ -138,7 +153,26 @@ export default function RecipeCard({
         {/* Actions */}
         <div className="mt-auto">
           {/* Brewing Status */}
-          {hasBeenBrewed && (
+          {hasBeenBrewed && brewingHistory.length > 0 && (
+            <div className="mb-2">
+              {brewingHistory.map((history, index) => {
+                const brewDate = new Date(history.dateBrewed).toLocaleDateString();
+                return (
+                  <div key={history.batchId || index} className="mb-1">
+                    <span className="badge bg-success me-1">
+                      <i className="fas fa-check me-1"></i>
+                      {history.batchNo ? `Batch #${history.batchNo}` : 'Brewed'}
+                    </span>
+                    <small className="text-muted">{brewDate}</small>
+                    {history.measuredAbv && (
+                      <small className="text-muted ms-1">({history.measuredAbv.toFixed(1)}% ABV)</small>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {hasBeenBrewed && brewingHistory.length === 0 && (
             <div className="mb-2">
               <span className="badge bg-success">
                 <i className="fas fa-check me-1"></i>

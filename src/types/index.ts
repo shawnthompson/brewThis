@@ -180,6 +180,31 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+// Brewfather Batch types
+export interface BrewfatherBatch {
+  _id: string;
+  name: string;
+  recipe?: BrewfatherRecipe;
+  recipeId?: string;
+  batchNo?: number;
+  status?: string;
+  brewer?: string;
+  brewDate?: string;
+  fermentationStartDate?: string;
+  fermentationEndDate?: string;
+  bottlingDate?: string;
+  measuredOg?: number;
+  measuredFg?: number;
+  measuredAbv?: number;
+  notes?: string;
+  _created?: { _seconds: number };
+  _timestamp_ms?: number;
+  estimatedOg?: number;
+  estimatedFg?: number;
+  estimatedAbv?: number;
+  estimatedIbu?: number;
+}
+
 // Component props types
 export interface RecipeCardProps {
   recipe: BrewfatherRecipe;

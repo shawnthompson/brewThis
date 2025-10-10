@@ -1,4 +1,4 @@
-import { BrewfatherRecipe, SearchResult } from '@/types';
+import { BrewfatherRecipe, BrewfatherBatch, SearchResult } from '@/types';
 import { searchSampleRecipes } from '@/lib/sampleRecipes';
 
 export interface BrewfatherConfig {
@@ -192,10 +192,10 @@ export class BrewfatherService {
 
     try {
       const response = await this.makeRequest(`/v2/batches?${searchParams.toString()}`);
-      const batches: BrewfatherRecipe[] = await response.json();
+      const batches: BrewfatherBatch[] = await response.json();
       
       return {
-        recipes: batches, // Using the same interface for now
+        recipes: batches as unknown as BrewfatherRecipe[], // Type casting since SearchResult expects recipes but we're returning batches
         total: batches.length,
         page: 1, // Brewfather API uses cursor-based pagination with start_after
         limit,
@@ -210,7 +210,7 @@ export class BrewfatherService {
   /**
    * Get a specific batch by ID
    */
-  async getBatchById(id: string): Promise<BrewfatherRecipe> {
+  async getBatchById(id: string): Promise<BrewfatherBatch> {
     try {
       const response = await this.makeRequest(`/v2/batches/${id}`);
       return await response.json();
