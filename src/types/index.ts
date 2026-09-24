@@ -38,6 +38,12 @@ export interface BrewfatherRecipe {
   mash?: BrewfatherMash;
   fermentation?: BrewfatherFermentation;
   water?: BrewfatherWater;
+  equipment?: BrewfatherEquipment;
+}
+
+export interface BrewfatherEquipment {
+  name?: string;
+  spargeTemperature?: number;
 }
 
 export interface BrewfatherFermentable {
@@ -49,6 +55,8 @@ export interface BrewfatherFermentable {
   potential?: number;
   amount?: number;
   percentage?: number;
+  grainCategory?: string;
+  supplier?: string;
   addAfterBoil?: boolean;
   notFermentable?: boolean;
 }
@@ -66,6 +74,7 @@ export interface BrewfatherHop {
   temp?: number;
   ibu?: number;
   actualTime?: number;
+  day?: number; // dry hop day
 }
 
 export interface BrewfatherYeast {
@@ -118,6 +127,8 @@ export interface BrewfatherFermentationStep {
   type?: string;
   temp?: number;
   time?: number;
+  stepTemp?: number;
+  stepTime?: number; // days
   pressure?: number;
 }
 

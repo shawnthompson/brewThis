@@ -6,7 +6,8 @@
     "dev": "bash -c 'source .env && next dev -p ${BREW_PORT:-3000}'",
     "build": "next build",
     "start": "bash -c 'source .env && next start -p ${BREW_PORT:-3000}'",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
@@ -19,7 +20,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.13.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -27,6 +28,7 @@
     "prisma": "^6.17.1",
     "sass": "^1.93.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.1"
   }
 }

@@ -243,4 +243,21 @@ a {
   .ingredient-list {
     page-break-inside: avoid;
   }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  nav,
+  footer,
+  button,
+  .btn {
+    display: none !important;
+  }
+}
+
+@page {
+  margin: 12mm;
 }

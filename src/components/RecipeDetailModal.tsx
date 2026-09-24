@@ -547,7 +547,14 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             
             {/* Modal Footer */}
             <div className="modal-footer">
-              <button 
+              <a
+                href={`/recipes/${recipe._id}/brewsheet`}
+                className="btn btn-primary"
+              >
+                <i className="fas fa-clipboard-list me-2"></i>
+                Brew Sheet
+              </a>
+              <button
                 type="button" 
                 className="btn btn-outline-primary"
                 onClick={() => window.print()}

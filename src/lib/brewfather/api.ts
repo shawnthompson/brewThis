@@ -1,6 +1,8 @@
 import { BrewfatherRecipe, BrewfatherBatch, SearchResult } from '@/types';
 import { searchSampleRecipes } from '@/lib/sampleRecipes';
 
+const BREWFATHER_CACHE_SECONDS = 600;
+
 export interface BrewfatherConfig {
   userId: string;
   apiKey: string;
@@ -43,17 +45,19 @@ export class BrewfatherService {
   }
 
   /**
-   * Makes a request to the Brewfather API
+   * Makes a read-only request to the Brewfather API.
+   * The API key is read-only and rate limited to 500 calls/hour, so responses
+   * are cached by Next.js for BREWFATHER_CACHE_SECONDS.
    */
-  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  private async makeRequest(endpoint: string): Promise<Response> {
     const url = `${this.config.baseUrl}${endpoint}`;
-    
+
     const response = await fetch(url, {
-      ...options,
+      method: 'GET',
+      next: { revalidate: BREWFATHER_CACHE_SECONDS },
       headers: {
         'Authorization': this.getAuthHeader(),
         'Content-Type': 'application/json',
-        ...options.headers,
       },
     });
 
@@ -216,36 +220,6 @@ export class BrewfatherService {
       return await response.json();
     } catch (error) {
       console.error(`Error fetching batch ${id}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update a recipe in your collection
-   */
-  async updateRecipe(recipeId: string, updates: Partial<BrewfatherRecipe>): Promise<BrewfatherRecipe> {
-    try {
-      const response = await this.makeRequest(`/v2/recipes/${recipeId}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error(`Error updating recipe ${recipeId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Import a recipe to your collection (for future use)
-   */
-  async importRecipe(recipeId: string): Promise<void> {
-    try {
-      await this.makeRequest(`/v2/recipes/${recipeId}/clone`, {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error(`Error importing recipe ${recipeId}:`, error);
       throw error;
     }
   }
