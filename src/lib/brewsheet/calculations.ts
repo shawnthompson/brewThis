@@ -41,10 +41,26 @@ export interface BrewSheetInput {
   grainKg: number;
   boilMinutes: number;
   whirlpoolHopG: number;
-  mashTempC: number;
+  mashTempC: number; // saccharification rest
+  mashInTempC?: number; // first step of a step mash; strike water targets this when set
   grainTempC?: number;
   strikeWaterL?: number; // override; strike temp is always recalculated from it
   hasCrystalOrRoast?: boolean;
+  efficiencyPct?: number; // brewhouse (into fermenter); defaults to equipment.efficiencyPct
+  fermentables?: ExtractItem[]; // enables gravity prediction
+}
+
+export interface ExtractItem {
+  amountKg: number;
+  potential?: number; // SG of 1 lb in 1 US gal, as Brewfather supplies it
+  mashed: boolean; // false for sugars/extracts added to the boil
+}
+
+export interface GravityPrediction {
+  efficiencyPct: number;
+  predictedOG: number; // est.
+  predictedPreBoilGravity: number; // est.
+  potentialEstimated: boolean; // a fermentable had no potential; FALLBACK_POTENTIAL used
 }
 
 export interface BrewSheetCalc {
@@ -61,6 +77,44 @@ export interface BrewSheetCalc {
   spargeAcidMl: number; // est.
   preBoilFillRatio: number; // est.
   boilOverRisk: boolean;
+  gravity?: GravityPrediction;
+}
+
+// Used only when a fermentable has no `potential` in the recipe payload.
+export const FALLBACK_POTENTIAL = 1.037;
+
+// Brewfather's `potential` is in points per lb per US gallon. Convert to
+// points per kg per L from the unit definitions, not a rounded constant.
+const LB_PER_KG = 1 / 0.45359237;
+const L_PER_US_GAL = 3.785411784;
+const PPG_TO_POINTS_L_PER_KG = LB_PER_KG * L_PER_US_GAL;
+
+function extractPointsL(item: ExtractItem): number {
+  const potential = item.potential ?? FALLBACK_POTENTIAL;
+  return (potential - 1) * 1000 * PPG_TO_POINTS_L_PER_KG * item.amountKg;
+}
+
+// Brewhouse efficiency is measured into the fermenter, so mashed extract is
+// spread over batchSizeL; boil additions dissolve fully in the post-boil volume.
+// Pre-boil gravity is the mashed extract before the boil concentrates it.
+export function predictGravity(
+  fermentables: ExtractItem[],
+  efficiencyPct: number,
+  volumes: { batchSizeL: number; preBoilVolumeL: number; postBoilVolumeL: number }
+): GravityPrediction {
+  const mashedPoints = fermentables.filter((f) => f.mashed).reduce((t, f) => t + extractPointsL(f), 0);
+  const boilPoints = fermentables.filter((f) => !f.mashed).reduce((t, f) => t + extractPointsL(f), 0);
+
+  const mashedOGPoints = (mashedPoints * (efficiencyPct / 100)) / volumes.batchSizeL;
+  const ogPoints = mashedOGPoints + boilPoints / volumes.postBoilVolumeL;
+  const preBoilPoints = (mashedOGPoints * volumes.postBoilVolumeL) / volumes.preBoilVolumeL;
+
+  return {
+    efficiencyPct,
+    predictedOG: 1 + ogPoints / 1000,
+    predictedPreBoilGravity: 1 + preBoilPoints / 1000,
+    potentialEstimated: fermentables.some((f) => f.potential === undefined),
+  };
 }
 
 export function round(value: number, decimals = 1): number {
@@ -98,12 +152,26 @@ export function abv(og: number, fg: number): number {
 }
 
 // Gravity after boiling preBoilVolumeL down to postBoilVolumeL.
+// Gravity points are the digits after 1.0: 1.056 → 56.
+export function gravityPoints(sg: number): number {
+  return (sg - 1) * 1000;
+}
+
+// Only the points scale with volume; multiplying raw SG gives nonsense.
+export function expectedOGPoints(
+  preBoilPoints: number,
+  preBoilVolumeL: number,
+  postBoilVolumeL: number
+): number {
+  return (preBoilPoints * preBoilVolumeL) / postBoilVolumeL;
+}
+
 export function expectedOG(
   preBoilGravity: number,
   preBoilVolumeL: number,
   postBoilVolumeL: number
 ): number {
-  return 1 + ((preBoilGravity - 1) * preBoilVolumeL) / postBoilVolumeL;
+  return 1 + expectedOGPoints(gravityPoints(preBoilGravity), preBoilVolumeL, postBoilVolumeL) / 1000;
 }
 
 // Pre-boil gravity that concentrates to targetOG over the boil.
@@ -130,20 +198,33 @@ export function calculateBrewSheet(
   const strikeWaterL = input.strikeWaterL ?? input.grainKg * DEFAULT_MASH_THICKNESS_L_PER_KG;
   const spargeWaterL = totalWaterL - strikeWaterL;
   const preBoilFillRatio = preBoilVolumeL / equipment.kettleVolumeL;
+  const postBoilVolumeL = preBoilVolumeL - boilOffL;
 
   return {
     grainAbsorptionL,
     boilOffL,
     hopLossL,
     preBoilVolumeL,
-    postBoilVolumeL: preBoilVolumeL - boilOffL,
+    postBoilVolumeL,
     totalWaterL,
     strikeWaterL,
     spargeWaterL,
-    strikeTempC: strikeTemperatureC(strikeWaterL, input.grainKg, input.mashTempC, input.grainTempC),
+    strikeTempC: strikeTemperatureC(
+      strikeWaterL,
+      input.grainKg,
+      input.mashInTempC ?? input.mashTempC,
+      input.grainTempC
+    ),
     strikeAcidMl: strikeAcidMl(input.hasCrystalOrRoast ?? false),
     spargeAcidMl: spargeAcidMl(spargeWaterL),
     preBoilFillRatio,
     boilOverRisk: preBoilFillRatio > BOIL_OVER_FILL_RATIO,
+    gravity: input.fermentables
+      ? predictGravity(input.fermentables, input.efficiencyPct ?? equipment.efficiencyPct, {
+          batchSizeL: input.batchSizeL,
+          preBoilVolumeL,
+          postBoilVolumeL,
+        })
+      : undefined,
   };
 }

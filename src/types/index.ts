@@ -44,6 +44,8 @@ export interface BrewfatherRecipe {
 export interface BrewfatherEquipment {
   name?: string;
   spargeTemperature?: number;
+  efficiency?: number;
+  efficiencyType?: string;
 }
 
 export interface BrewfatherFermentable {

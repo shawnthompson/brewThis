@@ -169,6 +169,19 @@
 .branch { display: flex; gap: 0.45rem; align-items: flex-start; margin-bottom: 0.2rem; }
 .cap { font-weight: 600; font-size: 1em; margin: 0.3rem 0 0; }
 
+.effCheck {
+  border: 1.5px dashed #111;
+  padding: 0.3rem 0.5rem;
+  margin: 0.3rem 0;
+}
+
+.effTable {
+  border-collapse: collapse;
+  margin-bottom: 0.2rem;
+
+  td { padding: 0.05rem 0.75rem 0.05rem 0; vertical-align: top; }
+}
+
 .correction {
   border: 1.5px solid #111;
   padding: 0.35rem 0.5rem;

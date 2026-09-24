@@ -181,8 +181,11 @@ Minimum set, in order: untreated water pH · strike water pH · sparge water pH 
 
 ### Course-correction rule (include on the sheet)
 
+Work in gravity points (the digits after 1.0), never raw SG — multiplying SG by a volume ratio gives nonsense (1.056 × 24 ÷ 21 = 1.206):
+
 ```
-expectedOG ≈ preBoilGravity × preBoilVolumeL / postBoilVolumeL
+expectedOGPoints ≈ preBoilPoints × preBoilVolumeL / postBoilVolumeL
+e.g. 1.056 at 24 L → 21 L: 56 × 24 ÷ 21 = 64 → OG 1.064
 ```
 
 Rendered as: on target → proceed; significantly low → extend the boil 15–20 min to concentrate, or accept lower ABV, but do **not** add sugar; high → top up with hot water.

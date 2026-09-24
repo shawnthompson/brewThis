@@ -3,7 +3,10 @@ import {
   abv,
   calculateBrewSheet,
   expectedOG,
+  expectedOGPoints,
+  gravityPoints,
   hasCrystalOrRoast,
+  predictGravity,
   strikeTemperatureC,
   targetPreBoilGravity,
 } from './calculations';
@@ -77,6 +80,80 @@ describe('calculateBrewSheet — variations', () => {
   });
 });
 
+describe('predictGravity — efficiency diagnostic', () => {
+  // Citra grist: 5.20 kg, 23.9 L pre-boil, 20.9 L post-boil, 19 L into fermenter.
+  const citraVolumes = { batchSizeL: 19, preBoilVolumeL: 23.9, postBoilVolumeL: 20.9 };
+  const citraGrist = [{ amountKg: 5.2, potential: 1.037, mashed: true }];
+
+  it('predicts pre-boil gravity roughly 8 points apart at 76% and 65%', () => {
+    const at76 = predictGravity(citraGrist, 76, citraVolumes);
+    const at65 = predictGravity(citraGrist, 65, citraVolumes);
+    const diffPoints = (at76.predictedPreBoilGravity - at65.predictedPreBoilGravity) * 1000;
+    expect(diffPoints).toBeGreaterThan(7);
+    expect(diffPoints).toBeLessThan(9);
+    expect(at76.predictedPreBoilGravity).toBeCloseTo(1.056, 3);
+    expect(at65.predictedPreBoilGravity).toBeCloseTo(1.048, 3);
+    expect(at76.predictedOG).toBeCloseTo(1.064, 3);
+    expect(at65.predictedOG).toBeCloseTo(1.055, 3);
+    expect(at76.potentialEstimated).toBe(false);
+  });
+
+  it('matches Brewfather for Plansmash West Coast IPA (65%, OG 1.053, pre-boil 1.047)', () => {
+    const p = predictGravity(
+      [
+        { amountKg: 4.65, potential: 1.034, mashed: true },
+        { amountKg: 0.93, potential: 1.038, mashed: true },
+      ],
+      65,
+      { batchSizeL: 20, preBoilVolumeL: 25.92, postBoilVolumeL: 22.92 }
+    );
+    // Within 1 gravity point of Brewfather's own figures (1.0531 / 1.047).
+    expect(Math.abs(p.predictedOG - 1.0531)).toBeLessThan(0.001);
+    expect(Math.abs(p.predictedPreBoilGravity - 1.047)).toBeLessThan(0.001);
+  });
+
+  it('falls back to 1.037 potential and flags the result as estimated', () => {
+    const missing = predictGravity([{ amountKg: 5.2, mashed: true }], 76, citraVolumes);
+    expect(missing.potentialEstimated).toBe(true);
+    expect(missing.predictedPreBoilGravity).toBeCloseTo(
+      predictGravity(citraGrist, 76, citraVolumes).predictedPreBoilGravity,
+      10
+    );
+  });
+
+  it('adds boil sugars to OG but not to pre-boil gravity', () => {
+    const withSugar = predictGravity(
+      [...citraGrist, { amountKg: 0.5, potential: 1.046, mashed: false }],
+      76,
+      citraVolumes
+    );
+    const base = predictGravity(citraGrist, 76, citraVolumes);
+    expect(withSugar.predictedPreBoilGravity).toBeCloseTo(base.predictedPreBoilGravity, 10);
+    expect(withSugar.predictedOG).toBeGreaterThan(base.predictedOG);
+  });
+
+  it('uses the efficiency passed to calculateBrewSheet, defaulting to the equipment profile', () => {
+    const fermentables = citraGrist;
+    expect(calculateBrewSheet({ ...citraIPA, fermentables }).gravity?.efficiencyPct).toBe(76);
+    expect(calculateBrewSheet({ ...citraIPA, fermentables, efficiencyPct: 65 }).gravity?.efficiencyPct).toBe(65);
+    expect(calculateBrewSheet(citraIPA).gravity).toBeUndefined();
+  });
+
+  it('leaves the golden water values unchanged when efficiency changes', () => {
+    const a = calculateBrewSheet({ ...citraIPA, fermentables: citraGrist, efficiencyPct: 65 });
+    const b = calculateBrewSheet(citraIPA);
+    expect(a.totalWaterL).toBe(b.totalWaterL);
+    expect(a.strikeTempC).toBe(b.strikeTempC);
+  });
+});
+
+describe('step mash strike temperature', () => {
+  it('targets the mash-in step when one is set', () => {
+    const c = calculateBrewSheet({ ...citraIPA, mashInTempC: 52 });
+    expect(c.strikeTempC).toBeCloseTo(strikeTemperatureC(18.2, 5.2, 52, 20), 10);
+  });
+});
+
 describe('hasCrystalOrRoast', () => {
   it('detects crystal, roast and dark malts by name, type or category', () => {
     expect(hasCrystalOrRoast([{ name: 'Pale Ale' }, { name: 'Crystal 60' }])).toBe(true);
@@ -101,6 +178,12 @@ describe('hasCrystalOrRoast', () => {
 describe('gravity helpers', () => {
   it('computes ABV as (og - fg) × 131.25', () => {
     expect(abv(1.062, 1.012)).toBeCloseTo(6.5625, 10);
+  });
+
+  it('course-corrects in gravity points: 1.056 at 24 L down to 21 L → 64 points, OG 1.064', () => {
+    expect(gravityPoints(1.056)).toBeCloseTo(56, 10);
+    expect(Math.abs(expectedOGPoints(gravityPoints(1.056), 24, 21) - 64)).toBeLessThanOrEqual(1);
+    expect(Math.abs(expectedOG(1.056, 24, 21) - 1.064)).toBeLessThanOrEqual(0.001);
   });
 
   it('concentrates pre-boil gravity to expected OG', () => {

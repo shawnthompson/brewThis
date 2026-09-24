@@ -36,6 +36,7 @@ export default async function BrewSheetPage({ params, searchParams }: Props) {
     mashTempC: parseOverride(query.mash, 60, 75),
     grainTempC: parseOverride(query.grain, 0, 40),
     strikeWaterL: parseOverride(query.strike, 5, 30),
+    efficiencyPct: parseOverride(query.efficiency, 40, 95),
   };
 
   return (

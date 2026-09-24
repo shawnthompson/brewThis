@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { BrewfatherRecipe } from '@/types';
-import { hopsByUse, parseOverride, toBrewSheetInput } from './fromRecipe';
+import {
+  efficiencyFor,
+  hopsByUse,
+  parseOverride,
+  saccharificationStep,
+  toBrewSheetInput,
+} from './fromRecipe';
 
 const recipe: BrewfatherRecipe = {
   _id: 'r1',
@@ -32,15 +38,69 @@ describe('toBrewSheetInput', () => {
       boilMinutes: 60,
       whirlpoolHopG: 200,
       mashTempC: 66.7,
+      mashInTempC: undefined,
       grainTempC: 20,
       strikeWaterL: undefined,
       hasCrystalOrRoast: false,
+      efficiencyPct: 76,
+      fermentables: [
+        { amountKg: 4.7, potential: undefined, mashed: true },
+        { amountKg: 0.5, potential: undefined, mashed: true },
+        { amountKg: 0.3, potential: undefined, mashed: false },
+      ],
     });
+  });
+
+  it('chooses the saccharification rest over a protein rest', () => {
+    const stepMash: BrewfatherRecipe = {
+      ...recipe,
+      mash: { steps: [{ stepTemp: 52, stepTime: 15 }, { stepTemp: 66.7, stepTime: 60 }] },
+    };
+    const input = toBrewSheetInput(stepMash);
+    expect(input.mashTempC).toBe(66.7);
+    expect(input.mashInTempC).toBe(52);
   });
 
   it('applies overrides', () => {
     const input = toBrewSheetInput(recipe, { batchSizeL: 21, mashTempC: 65, grainTempC: 15, strikeWaterL: 17 });
     expect(input).toMatchObject({ batchSizeL: 21, mashTempC: 65, grainTempC: 15, strikeWaterL: 17 });
+  });
+});
+
+describe('saccharificationStep', () => {
+  it('prefers a step named or typed saccharification', () => {
+    const steps = [
+      { name: 'Protein rest', stepTemp: 52 },
+      { name: 'Saccharification', stepTemp: 64 },
+      { name: 'Beta/alpha', stepTemp: 70 },
+    ];
+    expect(saccharificationStep(steps)?.stepTemp).toBe(64);
+  });
+
+  it('otherwise takes the hottest rest below mash-out', () => {
+    expect(saccharificationStep([{ stepTemp: 65 }, { stepTemp: 78 }])?.stepTemp).toBe(65);
+    expect(saccharificationStep([{ stepTemp: 52 }, { stepTemp: 66.7 }, { stepTemp: 75 }])?.stepTemp).toBe(66.7);
+  });
+
+  it('falls back to the first step', () => {
+    expect(saccharificationStep([{ stepTemp: 76 }, { stepTemp: 78 }])?.stepTemp).toBe(76);
+    expect(saccharificationStep([])).toBeUndefined();
+  });
+
+  it('leaves single-infusion mashes striking to the one rest', () => {
+    expect(toBrewSheetInput(recipe).mashInTempC).toBeUndefined();
+  });
+});
+
+describe('efficiencyFor', () => {
+  it('uses the Brewfather equipment profile, then recipe, then the 76% default', () => {
+    expect(efficiencyFor({ ...recipe, equipment: { efficiency: 65 }, efficiency: 70 })).toEqual({ efficiencyPct: 65, source: 'brewfather' });
+    expect(efficiencyFor({ ...recipe, efficiency: 70 })).toEqual({ efficiencyPct: 70, source: 'brewfather' });
+    expect(efficiencyFor(recipe)).toEqual({ efficiencyPct: 76, source: 'default' });
+  });
+
+  it('lets ?efficiency= override everything', () => {
+    expect(efficiencyFor({ ...recipe, equipment: { efficiency: 65 } }, { efficiencyPct: 80 })).toEqual({ efficiencyPct: 80, source: 'override' });
   });
 });
 

@@ -53,11 +53,16 @@ export const WHIRLPOOL_MINUTES = 20;
 export const HOP_SOCK_THRESHOLD_G = 100;
 
 export const COURSE_CORRECTION = {
-  formula: 'expected OG ≈ pre-boil gravity × pre-boil volume ÷ post-boil volume',
+  intro: 'Course correction. Work in gravity points (the digits after 1.0):',
+  formula: 'expected OG points ≈ pre-boil points × pre-boil volume ÷ post-boil volume',
+  example: 'Example: 1.056 at 24 L boiling down to 21 L → 56 × 24 ÷ 21 = 64 → OG 1.064',
   onTarget: 'On target → proceed.',
   low: 'Significantly low → extend the boil 15–20 min to concentrate, or accept lower ABV. Do NOT add sugar.',
   high: 'High → top up with hot water.',
 } as const;
+
+export const EFFICIENCY_CHECK_NOTE =
+  'Record this number. It settles which efficiency this system actually delivers.';
 
 export type ReadingId =
   | 'untreatedWaterPh'
