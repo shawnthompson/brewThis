@@ -49,7 +49,7 @@ export const RULES = {
 } as const;
 
 export const SANITISE_DURING_MASH =
-  'Mix StarSan (2 tbsp per 19 L). Sanitise fermenter, lid, temp probe, Tilt, auto-siphon and hose, dry-hop bag, sample jar.';
+  'Mix StarSan (2 tbsp (30 mL) per 19 L). Sanitise fermenter, lid, temp probe, Tilt, auto-siphon and hose, dry-hop bag, sample jar.';
 
 export const WHIRLPOOL_TEMP_C = 80;
 export const WHIRLPOOL_MINUTES = 20;
