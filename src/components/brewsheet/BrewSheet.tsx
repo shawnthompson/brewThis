@@ -26,6 +26,7 @@ import {
   READINGS,
   RULES,
   SAFETY,
+  SANITISE_DURING_MASH,
   WHIRLPOOL_MINUTES,
   WHIRLPOOL_TEMP_C,
   type ReadingId,
@@ -344,6 +345,9 @@ export default function BrewSheet({
           <span className={styles.unit}>mL (max 3)</span>
         </div>
         <ReadingField id="mashPhCorrected" />
+        <ul className={styles.checklist}>
+          <Check>{SANITISE_DURING_MASH}</Check>
+        </ul>
       </Step>
 
       <Step n={next()} title="Sparge water, mash out, lift malt pipe, sparge">
