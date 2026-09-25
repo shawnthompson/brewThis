@@ -1,0 +1,372 @@
+{
+ "Plansmash West Coast IPA": {
+  "recipe": {
+   "batchSize": 20,
+   "boilTime": 60,
+   "efficiency": 65,
+   "equipment": {
+    "aromaHopUtilization": 0.23,
+    "postBoilKettleVol": 22.92
+   },
+   "fermentables": [
+    {
+     "name": "Floor-Malted Bohemian Pilsner Malt",
+     "type": "Grain",
+     "amount": 4.65,
+     "potential": 1.034,
+     "color": 1.903553
+    },
+    {
+     "name": "Vienna Malt",
+     "type": "Grain",
+     "amount": 0.93,
+     "potential": 1.038,
+     "color": 3
+    }
+   ],
+   "hops": [
+    {
+     "use": "Boil",
+     "amount": 15,
+     "time": 60,
+     "alpha": 15.8
+    },
+    {
+     "use": "Boil",
+     "amount": 15,
+     "time": 30,
+     "alpha": 11.9
+    },
+    {
+     "use": "Boil",
+     "amount": 15,
+     "time": 15,
+     "alpha": 5.8
+    },
+    {
+     "use": "Boil",
+     "amount": 12,
+     "time": 5,
+     "alpha": 11.6
+    },
+    {
+     "use": "Aroma",
+     "amount": 20,
+     "time": 20,
+     "alpha": 5.8
+    },
+    {
+     "use": "Aroma",
+     "amount": 15,
+     "time": 20,
+     "alpha": 10
+    },
+    {
+     "use": "Aroma",
+     "amount": 15,
+     "time": 20,
+     "alpha": 11.6
+    },
+    {
+     "use": "Aroma",
+     "amount": 15,
+     "time": 20,
+     "alpha": 10
+    },
+    {
+     "use": "Aroma",
+     "amount": 10,
+     "time": 20,
+     "alpha": 13.9
+    },
+    {
+     "use": "Aroma",
+     "amount": 7,
+     "time": 20,
+     "alpha": 18
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 10,
+     "time": 3,
+     "alpha": 5.5
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 10,
+     "time": 3,
+     "alpha": 10
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 10,
+     "time": 3,
+     "alpha": 12
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 7,
+     "time": 3,
+     "alpha": 17
+    }
+   ],
+   "yeasts": [
+    {
+     "attenuation": 80
+    }
+   ]
+  },
+  "brewfather": {
+   "og": 1.053051507,
+   "fg": 1.01,
+   "abv": 5.64,
+   "ibu": 68.8,
+   "color": 4.2
+  }
+ },
+ "Old Skool": {
+  "recipe": {
+   "batchSize": 21,
+   "boilTime": 60,
+   "efficiency": 75,
+   "equipment": {
+    "aromaHopUtilization": 0.27,
+    "postBoilKettleVol": 22.92
+   },
+   "fermentables": [
+    {
+     "name": "American Ale Malt",
+     "type": "Grain",
+     "amount": 3.5,
+     "potential": 1.03726,
+     "color": 2.5380711
+    },
+    {
+     "name": "Munich, Light",
+     "type": "Grain",
+     "amount": 0.44,
+     "potential": 1.038042,
+     "color": 9
+    },
+    {
+     "name": "Gladiator Malt",
+     "type": "Grain",
+     "amount": 0.133,
+     "potential": 1.037,
+     "color": 5.076142
+    },
+    {
+     "name": "Shepherds Delight Malt",
+     "type": "Grain",
+     "amount": 0.05,
+     "potential": 1.03542,
+     "color": 152.284264
+    }
+   ],
+   "hops": [
+    {
+     "use": "Boil",
+     "amount": 10,
+     "time": 60,
+     "alpha": 11.1
+    },
+    {
+     "use": "Aroma",
+     "amount": 30,
+     "time": 30,
+     "alpha": 7.8
+    },
+    {
+     "use": "Aroma",
+     "amount": 30,
+     "time": 30,
+     "alpha": 11.1
+    },
+    {
+     "use": "Aroma",
+     "amount": 30,
+     "time": 30,
+     "alpha": 12.9
+    }
+   ],
+   "yeasts": [
+    {
+     "attenuation": 81
+    }
+   ]
+  },
+  "brewfather": {
+   "og": 1.046032738,
+   "fg": 1.009,
+   "abv": 4.86,
+   "ibu": 38.5,
+   "color": 6.2
+  }
+ },
+ "Sample Blonde Ale": {
+  "recipe": {
+   "batchSize": 23,
+   "boilTime": 90,
+   "efficiency": 72,
+   "equipment": {
+    "aromaHopUtilization": 0.5,
+    "postBoilKettleVol": 25
+   },
+   "fermentables": [
+    {
+     "name": "Pale Ale",
+     "type": "Grain",
+     "amount": 2,
+     "potential": 1.0359996,
+     "color": 2.5380711
+    },
+    {
+     "name": "Pilsen",
+     "type": "Grain",
+     "amount": 2,
+     "potential": 1.0359996,
+     "color": 1.5228426
+    },
+    {
+     "name": "Caramel Pils",
+     "type": "Grain",
+     "amount": 0.57,
+     "potential": 1.0330004,
+     "color": 2.5380711
+    },
+    {
+     "name": "Pale Crystal Malt",
+     "type": "Grain",
+     "amount": 0.1,
+     "potential": 1.034224,
+     "color": 38.071066
+    }
+   ],
+   "hops": [
+    {
+     "use": "Boil",
+     "amount": 5,
+     "time": 60,
+     "alpha": 17
+    },
+    {
+     "use": "Boil",
+     "amount": 20,
+     "time": 15,
+     "alpha": 3.75
+    },
+    {
+     "use": "Boil",
+     "amount": 5,
+     "time": 15,
+     "alpha": 9.2
+    },
+    {
+     "use": "Aroma",
+     "amount": 20,
+     "time": 20,
+     "alpha": 3.75
+    },
+    {
+     "use": "Aroma",
+     "amount": 5,
+     "time": 20,
+     "alpha": 9.2
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 20,
+     "time": 7,
+     "alpha": 9.2
+    }
+   ],
+   "yeasts": [
+    {
+     "attenuation": 81
+    }
+   ]
+  },
+  "brewfather": {
+   "og": 1.043588643,
+   "fg": 1.008,
+   "abv": 4.73,
+   "ibu": 19.8,
+   "color": 4.3
+  }
+ },
+ "American IPA Centennial": {
+  "recipe": {
+   "batchSize": 20.002804,
+   "boilTime": 60,
+   "efficiency": 65,
+   "equipment": {
+    "aromaHopUtilization": 0.5,
+    "postBoilKettleVol": 22.92
+   },
+   "fermentables": [
+    {
+     "name": "Malta Pilsen",
+     "type": "Grain",
+     "amount": 6.79,
+     "potential": 1.0368,
+     "color": 2,
+     "addAfterBoil": "FALSE"
+    },
+    {
+     "name": "Blumenauer I",
+     "type": "Grain",
+     "amount": 0.75,
+     "potential": 1.0345,
+     "color": 30,
+     "addAfterBoil": "FALSE"
+    },
+    {
+     "name": "(pt) CH\u00c2TEAU SPECIAL B\u00ae",
+     "type": "Grain",
+     "amount": 0.51,
+     "potential": 1.03542,
+     "color": 152.4,
+     "addAfterBoil": "FALSE"
+    }
+   ],
+   "hops": [
+    {
+     "use": "Boil",
+     "amount": 20.1,
+     "time": 60,
+     "alpha": 10.3
+    },
+    {
+     "use": "Boil",
+     "amount": 30,
+     "time": 15,
+     "alpha": 10.3
+    },
+    {
+     "use": "Boil",
+     "amount": 20,
+     "time": 0,
+     "alpha": 9
+    },
+    {
+     "use": "Dry Hop",
+     "amount": 30,
+     "time": 5,
+     "alpha": 9
+    }
+   ],
+   "yeasts": [
+    {
+     "attenuation": 76.5
+    }
+   ]
+  },
+  "brewfather": {
+   "og": 1.079973744,
+   "fg": 1.011,
+   "abv": 9.06,
+   "ibu": 39.1,
+   "color": 19.7
+  }
+ }
+}

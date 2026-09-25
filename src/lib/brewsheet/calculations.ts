@@ -87,7 +87,7 @@ export const FALLBACK_POTENTIAL = 1.037;
 // points per kg per L from the unit definitions, not a rounded constant.
 const LB_PER_KG = 1 / 0.45359237;
 const L_PER_US_GAL = 3.785411784;
-const PPG_TO_POINTS_L_PER_KG = LB_PER_KG * L_PER_US_GAL;
+export const PPG_TO_POINTS_L_PER_KG = LB_PER_KG * L_PER_US_GAL;
 
 function extractPointsL(item: ExtractItem): number {
   const potential = item.potential ?? FALLBACK_POTENTIAL;
