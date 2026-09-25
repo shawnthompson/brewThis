@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { BREWFATHER_CACHE_TAG, createBrewfatherService } from '@/lib/brewfather/api';
+import { isEmptyDraft } from '@/lib/brewfather/drafts';
 import { withDerivedValues } from '@/lib/brewfather/recipeCalc';
 import { isSampleRecipeId, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
 import { fail, forbiddenOrigin, isSameOrigin, writeErrorResponse } from '@/lib/brewfather/writeRoute';
@@ -53,7 +54,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params;
     if (isSampleRecipeId(id)) return fail(400, 'Sample recipe', 'Sample recipes are not in Brewfather and cannot be deleted.');
 
-    await createBrewfatherService().deleteRecipe(id);
+    const service = createBrewfatherService();
+
+    // Draft cleanup deletes without typing a name, so re-check against
+    // Brewfather's current copy: if anything was added since, keep it.
+    if (request.nextUrl.searchParams.get('onlyIfEmptyDraft') === '1') {
+      const current = await service.getRecipeById(id, { fresh: true });
+      if (!isEmptyDraft(current)) {
+        return fail(409, 'Not an empty draft', 'This recipe now has a name, notes or ingredients, so it was kept.');
+      }
+    }
+
+    await service.deleteRecipe(id);
     revalidateTag(BREWFATHER_CACHE_TAG);
     return NextResponse.json({ success: true, data: { id } } as ApiResponse<{ id: string }>);
   } catch (error) {

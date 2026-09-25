@@ -1,0 +1,372 @@
+{
+ "_created": {
+  "_nanoseconds": 867000000,
+  "_seconds": 1774107790
+ },
+ "_ev": 2,
+ "_id": "QE99KNmQ21JC3GAIs68HVxC6H1LTiE",
+ "_init": true,
+ "_rev": "qQOSRvYMnHZBwp4EXBXpibirkGViVI",
+ "_timestamp": {
+  "_nanoseconds": 866000000,
+  "_seconds": 1774107790
+ },
+ "_timestamp_ms": 1774107790866,
+ "_type": "recipe",
+ "_version": "2.20.2",
+ "_versionId": "wdxVYxUSTvyYdXvS0rjayshrI01v7r",
+ "_versionNumber": 1,
+ "abv": 0,
+ "attenuation": 0,
+ "author": null,
+ "avgWeightedHopstandTemp": 80,
+ "batchSize": 23,
+ "boilSize": 28,
+ "boilTime": 60,
+ "buGuRatio": 0,
+ "carbonation": 2.4,
+ "carbonationStyle": null,
+ "color": 0,
+ "data": {
+  "mashVolume": null,
+  "strikeTemp": null
+ },
+ "defaults": {
+  "abv": "simple",
+  "altitude": "m",
+  "attenuation": "normal",
+  "carbonation": "vol",
+  "color": "ebc",
+  "grainColor": "default",
+  "gravity": "sg",
+  "hop": "g",
+  "ibu": "tinseth",
+  "preferred": "metric",
+  "pressure": "bar",
+  "temp": "c",
+  "volume": "l",
+  "weight": "kg"
+ },
+ "efficiency": 72,
+ "equipment": {
+  "_id": "default",
+  "aromaHopUtilization": 0.23,
+  "batchSize": 23,
+  "boilOffPerHr": 3,
+  "boilSize": 28,
+  "boilTime": 60,
+  "bottlingVolume": 21,
+  "brewhouseEfficiency": 72,
+  "calcAromaHopUtilization": true,
+  "calcBoilVolume": true,
+  "calcMashEfficiency": true,
+  "efficiency": 72,
+  "efficiencyType": "Fermenter",
+  "evaporationRate": 0.10714285714285714,
+  "fermenterLoss": 2,
+  "fermenterLossEstimate": 0,
+  "fermenterVolume": 23,
+  "grainAbsorptionRate": 0.96,
+  "hidden": false,
+  "hopUtilization": 1,
+  "hopstandTemperature": 80,
+  "mashEfficiency": 75.1,
+  "mashTunDeadSpace": 3.5,
+  "mashTunLoss": 0,
+  "name": "Default",
+  "postBoilKettleVol": 25,
+  "trubChillerLoss": 1,
+  "waterCalculation": "Default_2",
+  "waterGrainRatio": 3
+ },
+ "extraGravity": 0,
+ "fermentableIbu": 0,
+ "fermentables": [],
+ "fermentablesTotalAmount": 0,
+ "fermentation": {
+  "_id": "default",
+  "name": "Ale",
+  "steps": [
+   {
+    "stepTemp": 20,
+    "stepTime": 14,
+    "type": "Primary"
+   }
+  ]
+ },
+ "fg": 1,
+ "fgEstimated": 1,
+ "fgFormula": "normal",
+ "firstWortGravity": null,
+ "folderRefs": [
+  "recipe_root_folder"
+ ],
+ "hidden": false,
+ "hopStandMinutes": 0,
+ "hops": [],
+ "hopsTotalAmount": 0,
+ "ibu": 0,
+ "ibuFormula": "tinseth",
+ "mash": {
+  "_id": "default",
+  "name": "High fermentability",
+  "steps": [
+   {
+    "name": "",
+    "stepTemp": 65,
+    "stepTime": 60,
+    "type": "Temperature"
+   }
+  ]
+ },
+ "mashEfficiency": 75.1,
+ "miscs": [],
+ "name": "",
+ "nutrition": {
+  "calories": {
+   "alcohol": 0,
+   "carbs": -0.40013260168988773,
+   "kJ": -1.6741548054704904,
+   "total": -0.40013260168988773
+  },
+  "carbs": {
+   "total": -0.09703215590980847
+  }
+ },
+ "og": 1,
+ "ogPlato": 0,
+ "path": "/",
+ "postBoilGravity": 1,
+ "preBoilGravity": 1,
+ "primaryTemp": 20,
+ "rbRatio": 0,
+ "searchTags": [],
+ "styleAbv": null,
+ "styleBuGu": null,
+ "styleColor": null,
+ "styleConformity": null,
+ "styleFg": null,
+ "styleIbu": null,
+ "styleOg": null,
+ "sumAromaHopPerLiter": 0,
+ "sumDryHopPerLiter": 0,
+ "tags": null,
+ "totalGravity": 1,
+ "type": "All Grain",
+ "water": {
+  "diluted": null,
+  "dilutionAmount": 0,
+  "dilutionPercentage": null,
+  "enableSpargeAdjustments": true,
+  "mash": {
+   "_id": "default",
+   "alkalinity": 35.2369,
+   "anions": 1.153,
+   "bicarbonate": 43,
+   "bicarbonateMeqL": 0.7047331847384293,
+   "calcium": 18,
+   "cations": 1.159,
+   "chloride": 10,
+   "hardness": 45,
+   "ionBalance": 0,
+   "ionBalanceOff": false,
+   "magnesium": 0,
+   "name": "Default",
+   "ph": 8,
+   "residualAlkalinity": 22.3795,
+   "residualAlkalinityMeqLCalc": 0.38393,
+   "soClRatio": 0.8,
+   "sodium": 6,
+   "sulfate": 8,
+   "type": "source"
+  },
+  "mashAdjustments": {
+   "acids": [
+    {
+     "amount": 0,
+     "concentration": 80,
+     "type": "lactic"
+    }
+   ],
+   "bicarbonate": 0,
+   "calcium": 0,
+   "calciumCarbonate": 0,
+   "calciumChloride": 0,
+   "calciumHydroxide": 0,
+   "calciumSulfate": 0,
+   "chloride": 0,
+   "ltAMS": 0,
+   "ltDWB": 0,
+   "magnesium": 0,
+   "magnesiumChloride": 0,
+   "magnesiumSulfate": 0,
+   "sodium": 0,
+   "sodiumBicarbonate": 0,
+   "sodiumChloride": 0,
+   "sodiumMetabisulfite": 0,
+   "sodiumMetabisulfitePPM": 0,
+   "sulfate": 0,
+   "volume": 0
+  },
+  "mashTargetDiff": null,
+  "mashWaterAmount": null,
+  "meta": {
+   "equalSourceTotal": true
+  },
+  "settings": {
+   "adjustSparge": true,
+   "calciumChloride": {
+    "auto": false,
+    "form": "dihydrate",
+    "mash": false,
+    "sparge": false
+   },
+   "calciumHydroxide": {
+    "auto": false,
+    "mash": false,
+    "sparge": false
+   },
+   "calciumSulfate": {
+    "auto": false,
+    "mash": false,
+    "sparge": false
+   },
+   "magnesiumSulfate": {
+    "auto": false,
+    "mash": false,
+    "sparge": false
+   },
+   "sodiumBicarbonate": {
+    "auto": false,
+    "mash": false,
+    "sparge": false
+   },
+   "sodiumChloride": {
+    "auto": false,
+    "mash": false,
+    "sparge": false
+   }
+  },
+  "source": {
+   "_id": "default",
+   "alkalinity": 35.2369,
+   "anions": 1.153,
+   "bicarbonate": 43,
+   "bicarbonateMeqL": 0.7047331847384293,
+   "calcium": 18,
+   "cations": 1.159,
+   "chloride": 10,
+   "hardness": 45,
+   "ionBalance": 0,
+   "ionBalanceOff": false,
+   "magnesium": 0,
+   "name": "Default",
+   "ph": 8,
+   "residualAlkalinity": 22.3795,
+   "residualAlkalinityMeqLCalc": 0.38393,
+   "soClRatio": 0.8,
+   "sodium": 6,
+   "sulfate": 8,
+   "type": "source"
+  },
+  "sourceTargetDiff": null,
+  "sparge": {
+   "_id": "default",
+   "alkalinity": 35.2369,
+   "anions": 1.153,
+   "bicarbonate": 43,
+   "bicarbonateMeqL": 0.7047331847384293,
+   "calcium": 18,
+   "cations": 1.159,
+   "chloride": 10,
+   "hardness": 45,
+   "ionBalance": 0,
+   "ionBalanceOff": false,
+   "magnesium": 0,
+   "name": "Default",
+   "ph": 8,
+   "residualAlkalinity": 22.3795,
+   "residualAlkalinityMeqLCalc": 0.38393,
+   "soClRatio": 0.8,
+   "sodium": 6,
+   "sulfate": 8,
+   "type": "source"
+  },
+  "spargeAdjustments": {
+   "acids": [
+    {
+     "amount": 0,
+     "concentration": 80,
+     "type": "lactic"
+    }
+   ],
+   "bicarbonate": 0,
+   "calcium": 0,
+   "calciumCarbonate": 0,
+   "calciumChloride": 0,
+   "calciumHydroxide": 0,
+   "calciumSulfate": 0,
+   "chloride": 0,
+   "ltAMS": 0,
+   "ltDWB": 0,
+   "magnesium": 0,
+   "magnesiumChloride": 0,
+   "magnesiumSulfate": 0,
+   "sodium": 0,
+   "sodiumBicarbonate": 0,
+   "sodiumChloride": 0,
+   "sodiumMetabisulfite": 0,
+   "sodiumMetabisulfitePPM": 0,
+   "sulfate": 0,
+   "volume": 0
+  },
+  "spargeTargetDiff": null,
+  "spargeWaterAmount": null,
+  "total": {
+   "_id": "default",
+   "alkalinity": 35.2369,
+   "anions": 1.153,
+   "bicarbonate": 43,
+   "bicarbonateMeqL": 0.7047331847384293,
+   "calcium": 18,
+   "cations": 1.159,
+   "chloride": 10,
+   "hardness": 45,
+   "ionBalance": 0,
+   "ionBalanceOff": false,
+   "magnesium": 0,
+   "name": "Default",
+   "ph": 8,
+   "residualAlkalinity": 22.3795,
+   "residualAlkalinityMeqLCalc": 0.38393,
+   "soClRatio": 0.8,
+   "sodium": 6,
+   "sulfate": 8,
+   "type": "source"
+  },
+  "totalAdjustments": {
+   "bicarbonate": 0,
+   "calcium": 0,
+   "calciumCarbonate": 0,
+   "calciumChloride": 0,
+   "calciumHydroxide": 0,
+   "calciumSulfate": 0,
+   "chloride": 0,
+   "ltAMS": 0,
+   "ltDWB": 0,
+   "magnesium": 0,
+   "magnesiumChloride": 0,
+   "magnesiumSulfate": 0,
+   "sodium": 0,
+   "sodiumBicarbonate": 0,
+   "sodiumChloride": 0,
+   "sodiumMetabisulfite": 0,
+   "sodiumMetabisulfitePPM": 0,
+   "sulfate": 0,
+   "volume": 0
+  },
+  "totalTargetDiff": null
+ },
+ "yeastToleranceExceededBy": null,
+ "yeasts": []
+}

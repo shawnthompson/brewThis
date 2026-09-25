@@ -1,0 +1,57 @@
+{
+  "_comment": "Profiles Brewfather attaches to a brand-new recipe (identical in app versions 2.20.2 and 3.1.0, captured 2026-09-25 from two untouched drafts). Metadata keys starting with \"_\" other than _id are ignored when comparing.",
+  "equipment": {
+    "_id": "default",
+    "aromaHopUtilization": 0.23,
+    "batchSize": 23,
+    "boilOffPerHr": 3,
+    "boilSize": 28,
+    "boilTime": 60,
+    "bottlingVolume": 21,
+    "brewhouseEfficiency": 72,
+    "calcAromaHopUtilization": true,
+    "calcBoilVolume": true,
+    "calcMashEfficiency": true,
+    "efficiency": 72,
+    "efficiencyType": "Fermenter",
+    "evaporationRate": 0.10714285714285714,
+    "fermenterLoss": 2,
+    "fermenterLossEstimate": 0,
+    "fermenterVolume": 23,
+    "grainAbsorptionRate": 0.96,
+    "hidden": false,
+    "hopUtilization": 1,
+    "hopstandTemperature": 80,
+    "mashEfficiency": 75.1,
+    "mashTunDeadSpace": 3.5,
+    "mashTunLoss": 0,
+    "name": "Default",
+    "postBoilKettleVol": 25,
+    "trubChillerLoss": 1,
+    "waterCalculation": "Default_2",
+    "waterGrainRatio": 3
+  },
+  "mash": {
+    "_id": "default",
+    "name": "High fermentability",
+    "steps": [
+      {
+        "name": "",
+        "stepTemp": 65,
+        "stepTime": 60,
+        "type": "Temperature"
+      }
+    ]
+  },
+  "fermentation": {
+    "_id": "default",
+    "name": "Ale",
+    "steps": [
+      {
+        "stepTemp": 20,
+        "stepTime": 14,
+        "type": "Primary"
+      }
+    ]
+  }
+}

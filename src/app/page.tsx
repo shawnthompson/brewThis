@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import RecipeCard from '@/components/RecipeCard';
 import RecipeDetailModal from '@/components/RecipeDetailModal';
+import EmptyDraftCleanup from '@/components/EmptyDraftCleanup';
 import FilterSidebar from '@/components/FilterSidebar';
 import { BrewingSpinner } from '@/components/LoadingSpinner';
 import { BrewfatherRecipe, BrewfatherBatch } from '@/types';
@@ -460,6 +461,13 @@ export default function Home() {
               </p>
             </div>
           </div>
+
+        {!isLoading && (
+          <EmptyDraftCleanup
+            recipes={allRecipes}
+            onDeleted={(ids) => setAllRecipes((recipes) => recipes.filter((r) => !ids.includes(r._id)))}
+          />
+        )}
 
         {/* Loading State */}
         {isLoading && (
