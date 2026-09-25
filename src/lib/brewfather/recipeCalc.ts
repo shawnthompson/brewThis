@@ -8,8 +8,8 @@
 // Brewfather's hopstand model is temperature-dependent and not reproduced
 // here, so expect IBU within roughly ±30% of what Brewfather would show.
 import type { BrewfatherFermentable, BrewfatherRecipe } from '@/types';
-import { abv, DEFAULT_EQUIPMENT, PPG_TO_POINTS_L_PER_KG } from '@/lib/brewsheet/calculations';
-import { isAddedAfterBoil, isMashed } from '@/lib/brewsheet/fromRecipe';
+import { abv, DEFAULT_EQUIPMENT, FALLBACK_POTENTIAL, PPG_TO_POINTS_L_PER_KG } from '@/lib/brewsheet/calculations';
+import { isAddedAfterBoil, isFlagSet, isMashed } from '@/lib/brewsheet/fromRecipe';
 
 // Brewfather's default aroma-hop (whirlpool/hopstand) utilisation at ~80 °C,
 // used when the recipe has no equipment profile of its own.
@@ -32,9 +32,11 @@ export interface DerivedValues {
 const round = (value: number, decimals: number) => Math.round(value * 10 ** decimals) / 10 ** decimals;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
+// A fermentable without a potential still adds gravity: assume the same
+// FALLBACK_POTENTIAL the brew sheet uses rather than counting it as zero.
 function points(f: BrewfatherFermentable): number {
-  if (f.potential === undefined || !(f.amount! > 0)) return 0;
-  return (f.potential - 1) * 1000 * PPG_TO_POINTS_L_PER_KG * f.amount!;
+  if (!(f.amount! > 0)) return 0;
+  return ((f.potential ?? FALLBACK_POTENTIAL) - 1) * 1000 * PPG_TO_POINTS_L_PER_KG * f.amount!;
 }
 
 // Tinseth: utilisation = bigness(gravity) × boil-time factor.
@@ -49,13 +51,16 @@ export function calculateDerived(recipe: RecipeLike): DerivedValues {
 
   // OG: brewhouse efficiency is measured into the fermenter, so extract is
   // spread over the batch size; boil sugars dissolve fully.
-  const mashedPoints = sum(inKettle.filter(isMashed).map(points));
-  const boilPoints = sum(inKettle.filter((f) => !isMashed(f)).map(points));
-  const og = batchSizeL ? 1 + (mashedPoints * efficiency + boilPoints) / batchSizeL / 1000 : 1;
+  const ogPoints = (f: BrewfatherFermentable) =>
+    batchSizeL ? (points(f) * (isMashed(f) ? efficiency : 1)) / batchSizeL : 0;
+  const totalPoints = sum(inKettle.map(ogPoints));
+  const og = 1 + totalPoints / 1000;
 
   // FG from the most attenuative yeast; no yeast means no fermentation.
+  // Non-fermentables (e.g. lactose) are not attenuated and stay in the FG.
   const attenuation = Math.max(0, ...(recipe.yeasts ?? []).map((y) => y.attenuation ?? 0));
-  const fg = 1 + (og - 1) * (1 - attenuation / 100);
+  const unfermentablePoints = sum(inKettle.filter((f) => isFlagSet(f.notFermentable)).map(ogPoints));
+  const fg = 1 + ((totalPoints - unfermentablePoints) * (1 - attenuation / 100) + unfermentablePoints) / 1000;
 
   // IBU: Tinseth at batch size. Aroma/whirlpool additions isomerise at the
   // aroma utilisation; boil hops also keep isomerising through the hopstand.

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { BrewfatherRecipe } from '@/types';
+import { FALLBACK_POTENTIAL } from '@/lib/brewsheet/calculations';
 import ItemTable, { type Column, type Item } from './ItemTable';
 
 // Suggestions only: inputs accept any text so existing Brewfather values survive.
@@ -13,7 +14,8 @@ const FERMENTABLE_COLUMNS: Column[] = [
   { key: 'type', label: 'Type', kind: 'text', suggestions: ['Grain', 'Adjunct', 'Sugar', 'Extract', 'Dry Extract', 'Liquid Extract'] },
   { key: 'amount', label: 'Amount', unit: 'kg', kind: 'number', step: 0.01 },
   { key: 'color', label: 'Colour', unit: 'SRM', kind: 'number', step: 0.1 },
-  { key: 'potential', label: 'Potential', unit: 'SG', kind: 'number', step: 0.001 },
+  // Blank potential is calculated as FALLBACK_POTENTIAL; the placeholder says so.
+  { key: 'potential', label: 'Potential', unit: 'SG', kind: 'number', step: 0.001, placeholder: String(FALLBACK_POTENTIAL) },
 ];
 
 const HOP_COLUMNS: Column[] = [

@@ -14,6 +14,7 @@ export interface Column {
   step?: number;
   width?: string;
   suggestions?: string[];
+  placeholder?: string; // shown when empty, e.g. the value the calculations assume
 }
 
 export default function ItemTable({
@@ -74,7 +75,9 @@ export default function ItemTable({
                       {c.unit && <span className="text-muted fw-normal"> ({c.unit})</span>}
                     </th>
                   ))}
-                  <th aria-label="Row actions" style={{ width: '7.5rem' }} />
+                  <th style={{ width: '7.5rem' }}>
+                    <span className="visually-hidden">Row actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +93,7 @@ export default function ItemTable({
                               type="number"
                               step="any"
                               min="0"
+                              placeholder={c.placeholder}
                               aria-label={`${title} ${index + 1} ${c.label}`}
                               value={typeof value === 'number' ? value : ''}
                               onChange={(e) => update(index, c.key, e.target.value === '' ? undefined : Number(e.target.value))}

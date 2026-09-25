@@ -64,7 +64,7 @@ export interface BrewfatherFermentable {
   grainCategory?: string;
   supplier?: string;
   addAfterBoil?: boolean | string; // some imported recipes store "TRUE"/"FALSE"
-  notFermentable?: boolean;
+  notFermentable?: boolean | string; // seen as the string "false" on some malts
 }
 
 export interface BrewfatherHop {

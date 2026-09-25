@@ -65,6 +65,48 @@ describe('calculateDerived — edge cases', () => {
     expect(boil).toBeGreaterThan(whirlpool * 3);
   });
 
+  // PR #2 review (P1): a missing potential used to add zero gravity.
+  it('assumes the fallback potential for fermentables without one', () => {
+    const base = { batchSize: 20, efficiency: 70, yeasts: [{ name: 'US-05', attenuation: 78 }] };
+    const missing = calculateDerived({ ...base, fermentables: [{ name: 'Pale', amount: 5 }] });
+    const explicit = calculateDerived({ ...base, fermentables: [{ name: 'Pale', amount: 5, potential: 1.037 }] });
+    expect(missing).toEqual(explicit);
+    expect(missing.og).toBeGreaterThan(1.04);
+  });
+
+  // PR #2 review (P2): attenuation used to apply to non-fermentables too.
+  it('keeps non-fermentable gravity (lactose) in the FG', () => {
+    const base = {
+      batchSize: 20,
+      efficiency: 70,
+      yeasts: [{ name: 'US-05', attenuation: 80 }],
+      fermentables: [{ name: 'Pale', amount: 5, potential: 1.037 }],
+    };
+    const lactose = { name: 'Lactose', type: 'Sugar', amount: 0.5, potential: 1.035 };
+    const plain = calculateDerived(base);
+    const flagged = calculateDerived({ ...base, fermentables: [...base.fermentables, { ...lactose, notFermentable: true }] });
+    const unflagged = calculateDerived({ ...base, fermentables: [...base.fermentables, lactose] });
+
+    const lactoseOgPoints = (flagged.og - plain.og) * 1000;
+    expect(flagged.og).toBe(unflagged.og);
+    // All of the lactose's points survive fermentation...
+    expect((flagged.fg - plain.fg) * 1000).toBeCloseTo(lactoseOgPoints, 0);
+    // ...so FG is higher and ABV lower than if it fermented.
+    expect(flagged.fg).toBeGreaterThan(unflagged.fg);
+    expect(flagged.abv).toBeLessThan(unflagged.abv);
+  });
+
+  it('reads the string "false" on notFermentable as fermentable', () => {
+    const base = {
+      batchSize: 20,
+      efficiency: 70,
+      yeasts: [{ name: 'US-05', attenuation: 80 }],
+      fermentables: [{ name: 'Pale', amount: 5, potential: 1.037 }],
+    };
+    const stringFalse = calculateDerived({ ...base, fermentables: [{ ...base.fermentables[0], notFermentable: 'false' }] });
+    expect(stringFalse).toEqual(calculateDerived(base));
+  });
+
   it('sets fermentable percentages by weight', () => {
     expect(
       calculateDerived({ fermentables: [{ name: 'A', amount: 4.5 }, { name: 'B', amount: 0.5 }] }).fermentablePercentages
