@@ -35,7 +35,10 @@ docker compose up -d db   # Postgres on 5432
 npx prisma db push        # needs DATABASE_URL: set -a; source .env; set +a
 npm run dev               # serves on BREW_PORT from .env (1689)
 npm test                  # vitest
+NEXT_DIST_DIR=.next-build npm run build   # production build — ALWAYS with NEXT_DIST_DIR
 ```
+
+⚠️ **Keep the dev server running while editing, and never let a production build write its `.next`.** A plain `npm run build` while `npm run dev` is up writes the same `.next` and corrupts it — every page then returns 500 until the dev server is stopped, `.next` deleted and dev restarted. `next.config.ts` reads `distDir` from `NEXT_DIST_DIR` (default `.next`), so always build with `NEXT_DIST_DIR=.next-build`. `.next-build` is gitignored, dockerignored and ESLint-ignored, and `tsconfig.json` already includes `.next-build/types` so the build does not rewrite it.
 
 ## Non-negotiable constraints
 

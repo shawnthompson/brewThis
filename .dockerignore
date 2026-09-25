@@ -6,6 +6,7 @@ docker-compose*
 README.md
 .env*
 .next
+.next-build
 .vercel
 node_modules
 npm-debug.log*
