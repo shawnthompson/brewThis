@@ -22,6 +22,7 @@ import {
   EFFICIENCY_CHECK_NOTE,
   HOP_SOCK_THRESHOLD_G,
   PH,
+  PH_BRANCHES,
   reading,
   READINGS,
   RULES,
@@ -334,9 +335,15 @@ export default function BrewSheet({
         <p>{PH.target}</p>
         <ReadingField id="mashPh15" />
         <div className={styles.tree}>
-          <div className={styles.branch}><span className={styles.box} aria-hidden="true" /> {PH.above}</div>
-          <div className={styles.branch}><span className={styles.box} aria-hidden="true" /> {PH.inRange}</div>
-          <div className={styles.branch}><span className={styles.box} aria-hidden="true" /> {PH.below}</div>
+          {PH_BRANCHES.map((b) => (
+            <div key={b.id} className={styles.branch}>
+              <span className={styles.box} aria-hidden="true" />
+              <span>
+                {b.text}
+                {b.note && <span className={styles.branchNote}> {b.note}</span>}
+              </span>
+            </div>
+          ))}
           <p className={styles.cap}>⚠ {PH.cap}</p>
         </div>
         <div className={styles.reading}>

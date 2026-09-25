@@ -27,12 +27,46 @@ export const PH = {
   calibrate: 'Calibrate the pH meter the day before with fresh 4.0 and 7.0 buffer.',
   target:
     'Expected mash pH 5.5–5.6 on this water, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
-  inRange: '5.5–5.6: expected on this water. Record and continue.',
-  above:
-    'Above 5.4: add 1 mL lactic 88%, stir fully through the bed, recirculate, re-measure after 10 min.',
   cap: 'Hard cap: 2 mL of in-mash corrections total. Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.',
-  below: 'Below 5.2: add nothing, record, continue. Never correct upward on brew day.',
 } as const;
+
+export interface PhBranch {
+  id: 'meterCheck' | 'nudge' | 'expected' | 'low';
+  // Ranges are mutually exclusive and together cover every reading;
+  // procedure.test.ts sweeps 4.8–6.4 to prove it.
+  matches: (ph: number) => boolean;
+  text: string;
+  note?: string;
+}
+
+// Listed in evaluation order: the 5.8 branch before the 5.6 branch.
+export const PH_BRANCHES: PhBranch[] = [
+  {
+    id: 'meterCheck',
+    matches: (ph) => ph > 5.8,
+    text: 'Above 5.8: check the meter against a second reference BEFORE adding acid (a meter 0.3 high reads exactly here); record and continue either way.',
+  },
+  {
+    id: 'nudge',
+    matches: (ph) => ph > 5.6 && ph <= 5.8,
+    text: 'Above 5.6: may add 1 mL lactic 88%, stir fully through the bed, recirculate, re-measure after 10 min (R6).',
+    note: '1 mL of lactic moves this mash ~0.05 pH (~9 mL for a 0.40 pH drop, modelled) - a nudge, not a correction. Dose once, re-measure; if it barely moved, that is the expected result.',
+  },
+  {
+    id: 'expected',
+    matches: (ph) => ph >= 5.5 && ph <= 5.6,
+    text: '5.5–5.6: expected on this water. Record and continue.',
+  },
+  {
+    id: 'low',
+    matches: (ph) => ph < 5.5,
+    text: 'Below 5.5: add nothing, record, continue. Never correct upward on brew day.',
+  },
+];
+
+export function phBranch(ph: number): PhBranch | undefined {
+  return PH_BRANCHES.find((b) => b.matches(ph));
+}
 
 export const RULES = {
   whirlpool:

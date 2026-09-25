@@ -160,10 +160,14 @@ Create `src/lib/brewsheet/procedure.ts`. This holds the static, hand-written con
 ### pH decision tree (render as a branch, not prose)
 
 - Expected mash pH **5.5–5.6** on this water (revised 2026-09-24; previously 5.2–5.4). Render verbatim: "Expected mash pH 5.5–5.6 on this water, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it."
-- **5.5–5.6:** "5.5–5.6: expected on this water. Record and continue."
-- **Above 5.4:** add 1 mL lactic 88%, stir fully through the bed, recirculate, re-measure after 10 min.
+- Four branches (revised 2026-09-25), mutually exclusive and covering every reading. Evaluate and render them in this order — the 5.8 branch before the 5.6 branch. Render each verbatim:
+  - **Above 5.8** (`ph > 5.8`): "Above 5.8: check the meter against a second reference BEFORE adding acid (a meter 0.3 high reads exactly here); record and continue either way."
+  - **Above 5.6** (`5.6 < ph ≤ 5.8`): "Above 5.6: may add 1 mL lactic 88%, stir fully through the bed, recirculate, re-measure after 10 min (R6)." followed by: "1 mL of lactic moves this mash ~0.05 pH (~9 mL for a 0.40 pH drop, modelled) - a nudge, not a correction. Dose once, re-measure; if it barely moved, that is the expected result."
+  - **5.5–5.6** (`5.5 ≤ ph ≤ 5.6`): "5.5–5.6: expected on this water. Record and continue."
+  - **Below 5.5** (`ph < 5.5`): "Below 5.5: add nothing, record, continue. Never correct upward on brew day."
+- Why: on this water lactic hits its flavour threshold before the mash reaches 5.3, so 5.5–5.6 is the normal result, not a fault. A reading far above it is more likely a meter error than a mash problem, hence the meter check before any acid above 5.8.
+- ⚠️ The previous tree (above 5.4 / 5.2–5.4 / below 5.2) combined with the new 5.5–5.6 range left readings from 5.2 to 5.5 with no branch — on the paper sheet as well as in code. `procedure.test.ts` sweeps pH 4.8–6.4 in 0.05 steps and asserts exactly one branch matches each value. Keep that test when changing any threshold.
 - ⚠️ **Hard cap: 2 mL of in-mash corrections total.** Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.
-- **Below 5.2:** add nothing, record, continue. Never correct upward on brew day.
 - Always prefix the pH section with: "Calibrate the pH meter the day before with fresh 4.0 and 7.0 buffer."
 
 ### Fixed process rules
