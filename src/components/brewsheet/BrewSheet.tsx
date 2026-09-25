@@ -342,7 +342,7 @@ export default function BrewSheet({
         <div className={styles.reading}>
           <span className={styles.readingLabel}>Lactic added in mash</span>
           <span className={styles.blank} />
-          <span className={styles.unit}>mL (max 3)</span>
+          <span className={styles.unit}>mL (max 2)</span>
         </div>
         <ReadingField id="mashPhCorrected" />
         <ul className={styles.checklist}>

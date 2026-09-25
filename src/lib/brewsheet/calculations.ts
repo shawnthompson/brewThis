@@ -142,7 +142,7 @@ export function strikeAcidMl(crystalOrRoast: boolean): number {
   return crystalOrRoast ? 3.0 : 4.0;
 }
 
-// ~1.5 mL of 88% lactic per 11 L, scaled from this brewer's batches.
+// ~1.5 mL of 88% lactic per 11 L. Basis and limits: ACID_CAVEAT in procedure.ts.
 export function spargeAcidMl(spargeWaterL: number): number {
   return round(spargeWaterL * 0.135, 1);
 }

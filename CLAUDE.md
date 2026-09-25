@@ -110,7 +110,9 @@ spargeAcidMl = round(spargeWaterL × 0.135, 1)   // ~1.5 mL per 11 L
 
 Both are **88% lactic acid**. Pale grists with no crystal or roast need more acid, because those malts acidify the mash themselves.
 
-⚠️ These are scaled from this brewer's own batches, **not calculated from a water report** (none exists). Always render them with the caveat that mash pH must be measured, and never present them as computed from water chemistry.
+⚠️ These doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and **deliberately only partially correct** the mash, to stay under the ~400 mg/L lactic flavour threshold. Always render them with this caveat, verbatim (revised 2026-09-24):
+
+"Acid doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and deliberately only partially corrected, to stay under the ~400 mg/L lactic flavour threshold. Mash pH must be measured."
 
 ### ABV
 
@@ -157,9 +159,10 @@ Create `src/lib/brewsheet/procedure.ts`. This holds the static, hand-written con
 
 ### pH decision tree (render as a branch, not prose)
 
-- Target mash pH **5.2–5.4**, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash.
+- Expected mash pH **5.5–5.6** on this water (revised 2026-09-24; previously 5.2–5.4). Render verbatim: "Expected mash pH 5.5–5.6 on this water, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it."
+- **5.5–5.6:** "5.5–5.6: expected on this water. Record and continue."
 - **Above 5.4:** add 1 mL lactic 88%, stir fully through the bed, recirculate, re-measure after 10 min.
-- ⚠️ **Hard cap: 3 mL of in-mash corrections total.** Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.
+- ⚠️ **Hard cap: 2 mL of in-mash corrections total.** Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.
 - **Below 5.2:** add nothing, record, continue. Never correct upward on brew day.
 - Always prefix the pH section with: "Calibrate the pH meter the day before with fresh 4.0 and 7.0 buffer."
 
