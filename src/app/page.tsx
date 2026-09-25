@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import RecipeCard from '@/components/RecipeCard';
 import RecipeDetailModal from '@/components/RecipeDetailModal';
+import { plannedRecipeIds } from '@/lib/brewfather/recipeStatus';
 import EmptyDraftCleanup from '@/components/EmptyDraftCleanup';
 import FilterSidebar from '@/components/FilterSidebar';
 import { BrewingSpinner } from '@/components/LoadingSpinner';
@@ -16,7 +17,7 @@ interface RecipeFilters {
   hops: string[];
   abvRange: [number, number];
   ibuRange: [number, number];
-  brewingStatus: 'all' | 'brewed' | 'not-brewed';
+  brewingStatus: 'all' | 'brewed' | 'planned' | 'not-brewed';
   sortBy: 'name' | 'abv' | 'ibu' | 'og' | '_created';
   sortOrder: 'asc' | 'desc';
 }
@@ -41,6 +42,7 @@ export default function Home() {
   const [selectedRecipe, setSelectedRecipe] = useState<BrewfatherRecipe | null>(null);
   const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0);
   const [brewingHistory, setBrewingHistory] = useState<BrewingHistory[]>([]);
+  const [plannedIds, setPlannedIds] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // Dynamic filter ranges based on actual recipe data
   const maxAbv = useMemo(() => {
@@ -80,8 +82,12 @@ export default function Home() {
   const syncBatchesWithBrewingHistory = (batches: BrewfatherBatch[]) => {
     if (!batches || batches.length === 0) return;
     
+    // A Planning batch can already carry its planned brew date, so it does
+    // not count as brewed; it is tracked separately as planned.
+    setPlannedIds(plannedRecipeIds(batches));
+
     const brewingHistoryFromBatches: BrewingHistory[] = batches
-      .filter(batch => batch.recipe?._id && batch.brewDate) // Only batches with recipe and brew date
+      .filter(batch => batch.recipe?._id && batch.brewDate && batch.status?.toLowerCase() !== 'planning')
       .map(batch => {
         // Convert brewDate from timestamp to ISO date string
         const brewDate = typeof batch.brewDate === 'number' 
@@ -273,6 +279,7 @@ export default function Home() {
     // Brewing status filter
     if (filters.brewingStatus !== 'all') {
       filtered = filtered.filter(recipe => {
+        if (filters.brewingStatus === 'planned') return plannedIds.has(recipe._id);
         const brewed = hasBeenBrewed(recipe._id);
         return filters.brewingStatus === 'brewed' ? brewed : !brewed;
       });
@@ -328,7 +335,7 @@ export default function Home() {
     });
     
     return filtered;
-  }, [allRecipes, filters, hasBeenBrewed]);
+  }, [allRecipes, filters, hasBeenBrewed, plannedIds]);
   
   // Extract unique styles and types for filter options
   const availableStyles = useMemo(() => {
@@ -496,6 +503,7 @@ export default function Home() {
                             onSelect={handleRecipeSelect}
                             onImport={handleRecipeImport}
                             hasBeenBrewed={hasBeenBrewed(recipe._id)}
+                            hasPlannedBatch={plannedIds.has(recipe._id)}
                             brewingHistory={recipeBrewingHistory}
                           />
                         </div>
