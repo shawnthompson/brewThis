@@ -2,6 +2,8 @@ import { BrewfatherRecipe, BrewfatherBatch, SearchResult } from '@/types';
 import { searchSampleRecipes } from '@/lib/sampleRecipes';
 
 const BREWFATHER_CACHE_SECONDS = 600;
+// Every cached Brewfather read carries this tag; writes revalidate it.
+export const BREWFATHER_CACHE_TAG = 'brewfather';
 
 export interface BrewfatherConfig {
   userId: string;
@@ -45,20 +47,50 @@ export class BrewfatherService {
   }
 
   /**
-   * Makes a read-only request to the Brewfather API.
-   * The API key is read-only and rate limited to 500 calls/hour, so responses
-   * are cached by Next.js for BREWFATHER_CACHE_SECONDS.
+   * Makes a GET request to the Brewfather API.
+   * The API is rate limited to 500 calls/hour, so responses are cached by
+   * Next.js for BREWFATHER_CACHE_SECONDS unless `fresh` is set. Writes
+   * revalidate BREWFATHER_CACHE_TAG so cached reads never outlive an edit.
    */
-  private async makeRequest(endpoint: string): Promise<Response> {
+  private async makeRequest(endpoint: string, { fresh = false } = {}): Promise<Response> {
     const url = `${this.config.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
       method: 'GET',
-      next: { revalidate: BREWFATHER_CACHE_SECONDS },
+      ...(fresh
+        ? { cache: 'no-store' as const }
+        : { next: { revalidate: BREWFATHER_CACHE_SECONDS, tags: [BREWFATHER_CACHE_TAG] } }),
       headers: {
         'Authorization': this.getAuthHeader(),
         'Content-Type': 'application/json',
       },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Brewfather API error (${response.status}): ${errorText}`);
+    }
+
+    return response;
+  }
+
+  /**
+   * Makes an uncached write request. Only recipes are writable; the API key
+   * needs the recipes.write and recipes.delete scopes.
+   */
+  private async writeRequest(
+    endpoint: string,
+    method: 'POST' | 'PATCH' | 'DELETE',
+    body?: unknown
+  ): Promise<Response> {
+    const response = await fetch(`${this.config.baseUrl}${endpoint}`, {
+      method,
+      cache: 'no-store',
+      headers: {
+        'Authorization': this.getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -147,14 +179,36 @@ export class BrewfatherService {
   /**
    * Get a specific recipe by ID
    */
-  async getRecipeById(id: string): Promise<BrewfatherRecipe> {
+  async getRecipeById(id: string, { fresh = false } = {}): Promise<BrewfatherRecipe> {
     try {
-      const response = await this.makeRequest(`/v2/recipes/${id}`);
+      const response = await this.makeRequest(`/v2/recipes/${encodeURIComponent(id)}`, { fresh });
       return await response.json();
     } catch (error) {
       console.error(`Error fetching recipe ${id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Create a recipe. Returns the new recipe's ID.
+   */
+  async createRecipe(recipe: Partial<BrewfatherRecipe>): Promise<string> {
+    const response = await this.writeRequest('/v2/recipes', 'POST', recipe);
+    const result: { id: string } = await response.json();
+    return result.id;
+  }
+
+  /**
+   * Update a recipe. Shallow merge: top-level fields sent replace the stored
+   * ones, and array fields (fermentables, hops, yeasts, miscs) are replaced
+   * wholesale — always send the complete list.
+   */
+  async updateRecipe(id: string, changes: Partial<BrewfatherRecipe>): Promise<void> {
+    await this.writeRequest(`/v2/recipes/${encodeURIComponent(id)}`, 'PATCH', changes);
+  }
+
+  async deleteRecipe(id: string): Promise<void> {
+    await this.writeRequest(`/v2/recipes/${encodeURIComponent(id)}`, 'DELETE');
   }
 
 
@@ -222,6 +276,24 @@ export class BrewfatherService {
       console.error(`Error fetching batch ${id}:`, error);
       throw error;
     }
+  }
+}
+
+/**
+ * Load a recipe for a page: null when Brewfather has no such recipe, a
+ * generic error otherwise (never Brewfather's raw error text).
+ */
+export async function loadRecipeOrNull(
+  id: string,
+  { fresh = false } = {}
+): Promise<BrewfatherRecipe | null> {
+  try {
+    return await createBrewfatherService().getRecipeById(id, { fresh });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Brewfather API error (404)')) {
+      return null;
+    }
+    throw new Error('Failed to load recipe from Brewfather');
   }
 }
 

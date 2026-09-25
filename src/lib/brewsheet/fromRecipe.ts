@@ -60,8 +60,18 @@ export function efficiencyFor(
 const NOT_MASHED = /sugar|extract|juice|honey/i;
 const WHIRLPOOL_USES = /aroma|whirlpool|hopstand/i;
 
+// Brewfather sometimes stores flags as the strings "TRUE"/"FALSE" (seen on
+// imported recipes); a plain truthiness check reads "FALSE" as true.
+export function isFlagSet(value: unknown): boolean {
+  return value === true || (typeof value === 'string' && value.trim().toLowerCase() === 'true');
+}
+
+export function isAddedAfterBoil(f: BrewfatherFermentable): boolean {
+  return isFlagSet(f.addAfterBoil);
+}
+
 export function isMashed(f: BrewfatherFermentable): boolean {
-  return !f.addAfterBoil && !NOT_MASHED.test(f.type ?? '');
+  return !isAddedAfterBoil(f) && !NOT_MASHED.test(f.type ?? '');
 }
 
 export function mashedFermentables(recipe: BrewfatherRecipe): BrewfatherFermentable[] {
@@ -115,7 +125,7 @@ export function toBrewSheetInput(
     hasCrystalOrRoast: hasCrystalOrRoast(grist),
     efficiencyPct: efficiencyFor(recipe, overrides).efficiencyPct,
     fermentables: (recipe.fermentables ?? [])
-      .filter((f) => !f.addAfterBoil)
+      .filter((f) => !isAddedAfterBoil(f))
       .map((f) => ({ amountKg: f.amount ?? 0, potential: f.potential, mashed: isMashed(f) })),
   };
 }

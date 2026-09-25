@@ -1,6 +1,8 @@
 // Brewfather API types
 export interface BrewfatherRecipe {
   _id: string;
+  _rev?: string; // changes on every save; used to detect edits made elsewhere
+  _timestamp_ms?: number;
   name: string;
   type?: string; // Recipe type (e.g., "All Grain", "Extract", "Partial Mash")
   style?: {
@@ -46,6 +48,8 @@ export interface BrewfatherEquipment {
   spargeTemperature?: number;
   efficiency?: number;
   efficiencyType?: string;
+  aromaHopUtilization?: number;
+  postBoilKettleVol?: number;
 }
 
 export interface BrewfatherFermentable {
@@ -59,8 +63,8 @@ export interface BrewfatherFermentable {
   percentage?: number;
   grainCategory?: string;
   supplier?: string;
-  addAfterBoil?: boolean;
-  notFermentable?: boolean;
+  addAfterBoil?: boolean | string; // some imported recipes store "TRUE"/"FALSE"
+  notFermentable?: boolean | string; // seen as the string "false" on some malts
 }
 
 export interface BrewfatherHop {
@@ -94,7 +98,7 @@ export interface BrewfatherYeast {
 }
 
 export interface BrewfatherMisc {
-  _id: string;
+  _id?: string;
   name: string;
   type?: string;
   use?: string;

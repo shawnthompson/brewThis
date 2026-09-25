@@ -442,12 +442,18 @@ export default function Home() {
                     My Recipe Collection
                   </h2>
                 </div>
-                {!isLoading && allRecipes.length > 0 && (
-                  <div className="text-muted">
-                    <i className="fas fa-check-circle me-2 text-success"></i>
-                    <strong>{allRecipes.length}</strong> recipes loaded
-                  </div>
-                )}
+                <div className="d-flex align-items-center gap-3">
+                  {!isLoading && allRecipes.length > 0 && (
+                    <div className="text-muted">
+                      <i className="fas fa-check-circle me-2 text-success"></i>
+                      <strong>{allRecipes.length}</strong> recipes loaded
+                    </div>
+                  )}
+                  <a href="/recipes/new" className="btn btn-primary">
+                    <i className="fas fa-plus me-2"></i>
+                    New recipe
+                  </a>
+                </div>
               </div>
               <p className="text-muted mb-0">
                 Browse and filter your personal brewing recipes from Brewfather
@@ -541,6 +547,11 @@ export default function Home() {
           recipes={filteredRecipes}
           currentIndex={selectedRecipeIndex}
           onNavigate={handleModalNavigation}
+          onDeleted={(id) => {
+            setAllRecipes((recipes) => recipes.filter((r) => r._id !== id));
+            setSelectedRecipe(null);
+            setSelectedRecipeIndex(0);
+          }}
         />
       )}
     </div>

@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrewfatherRecipe } from '@/types';
+import DeleteRecipeButton from './DeleteRecipeButton';
+import { isSampleRecipeId } from '@/lib/brewfather/recipeInput';
 
 interface BrewingHistoryData {
   recipeId: string;
@@ -23,6 +25,7 @@ interface RecipeDetailModalProps {
   recipes?: BrewfatherRecipe[];
   currentIndex?: number;
   onNavigate?: (index: number) => void;
+  onDeleted?: (id: string) => void;
 }
 
 const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({ 
@@ -32,13 +35,18 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   brewingHistory = [],
   recipes = [],
   currentIndex = 0,
-  onNavigate
+  onNavigate,
+  onDeleted
 }) => {
   // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Arrow keys move the cursor inside a text field, not between recipes
+      const target = e.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) && e.key !== 'Escape') return;
+
       if (e.key === 'Escape') {
         onClose();
       } else if (e.key === 'ArrowLeft' && currentIndex > 0 && onNavigate) {
@@ -103,6 +111,7 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="recipe-modal-title"
       >
         <div className="modal-dialog modal-xl modal-dialog-scrollable">
           <div className="modal-content">
@@ -121,7 +130,7 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 </button>
                 
                 {/* Title */}
-                <h4 className="modal-title flex-grow-1 mb-0">
+                <h4 id="recipe-modal-title" className="modal-title flex-grow-1 mb-0">
                   <i className="fas fa-flask me-2"></i>
                   {recipe.name}
                   {recipes.length > 1 && (
@@ -547,6 +556,22 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             
             {/* Modal Footer */}
             <div className="modal-footer">
+              {!isSampleRecipeId(recipe._id) && (
+                <>
+                  {onDeleted && (
+                    <span className="me-auto">
+                      <DeleteRecipeButton key={recipe._id} recipe={recipe} onDeleted={onDeleted} />
+                    </span>
+                  )}
+                  <a
+                    href={`/recipes/${encodeURIComponent(recipe._id)}/edit`}
+                    className="btn btn-outline-primary"
+                  >
+                    <i className="fas fa-pen me-2"></i>
+                    Edit
+                  </a>
+                </>
+              )}
               <a
                 href={`/recipes/${recipe._id}/brewsheet`}
                 className="btn btn-primary"

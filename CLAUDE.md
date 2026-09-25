@@ -20,8 +20,9 @@ Neither source alone produces a usable sheet. That is the whole product.
 
 - Next.js 15 (App Router) + TypeScript + Bootstrap 5, Prisma 6, Vitest for unit tests
 - Docker Compose with PostgreSQL. Prisma schema covers `User`, `Recipe`, `BrewingSession`, `FermentationLog`, `InventoryItem`, `TastingNote`; nothing reads or writes the DB yet
-- Brewfather API integration working — `/api/recipes/search`, `/api/recipes/[id]`, `/api/batches`. The client (`src/lib/brewfather/api.ts`) is GET-only and caches responses for 10 minutes
-- Recipe browsing UI with filters; the recipe modal links to the brew sheet
+- Brewfather API integration working — `/api/recipes/search`, `/api/recipes/[id]`, `/api/batches`. The client (`src/lib/brewfather/api.ts`) caches reads for 10 minutes under the `brewfather` cache tag
+- Recipe browsing UI with filters; the recipe modal links to the brew sheet, and has Edit and Delete
+- **Recipe create/edit/delete** (added 2026-09-25): `/recipes/new`, `/recipes/[id]/edit` (`src/components/recipeEditor/`), write routes `POST /api/recipes`, `PATCH`/`DELETE /api/recipes/[id]`. Input validated by `src/lib/brewfather/recipeInput.ts`; shared route guards in `src/lib/brewfather/writeRoute.ts`
 - **Phase 1 brew sheet implemented** at `/recipes/[id]/brewsheet`:
   - `src/lib/brewsheet/calculations.ts` — pure calculation engine (+ tests incl. golden fixture)
   - `src/lib/brewsheet/fromRecipe.ts` — maps a Brewfather recipe to calculation inputs (+ tests)
@@ -44,7 +45,13 @@ NEXT_DIST_DIR=.next-build npm run build   # production build — ALWAYS with NEX
 
 1. 🔐 **Never commit secrets.** `.env` is gitignored and has always been. Brewfather credentials live only in `.env` as `BREWFATHER_USERID` and `BREWFATHER_API`. Never hardcode them, never log them, never put them in error messages.
 2. ⚠️ **Safety text is static, never generated.** Every warning in the output must come from a hardcoded template constant. Do **not** call an LLM to write safety content at runtime, and do not paraphrase the warnings in this spec — copy them verbatim. A hallucinated safety instruction around 25 kg of boiling liquid is a real-world injury risk.
-3. **Brewfather API is read-only.** Scopes are `recipes.read`, `batches.read`, `inventory.read`. Never add write or delete scopes. Rate limit is **500 calls/hour** — cache responses.
+3. **Brewfather API: recipes are read/write, everything else is read-only** (changed 2026-09-25 at Shawn's request). Scopes: `recipes.read`, `recipes.write`, `recipes.delete`, `batches.read`, `inventory.read`. Never add batch or inventory write/delete scopes. Rate limit is **500 calls/hour** — cache reads; every write must `revalidateTag('brewfather')`. Recipe writes:
+   - PATCH is a shallow merge but **replaces `fermentables`/`hops`/`yeasts`/`miscs` wholesale** — always send complete lists, never a partial list.
+   - Edit from a fresh (uncached) read, and keep the version check: `PATCH /api/recipes/[id]` compares the form's `baseVersion` (`_rev`) with Brewfather's current one and returns 409 on mismatch, so edits made in Brewfather are never silently overwritten.
+   - Write routes accept browser requests only from the app's own origin (the app has no login). Only fields in `EDITABLE_FIELDS` may be written; `_` fields, style, water and equipment are left to Brewfather.
+   - Deleting requires typing the recipe name to confirm.
+   - **Brewfather does not recalculate anything on API writes** (verified 2026-09-25: OG/FG/ABV/IBU/colour stay empty on create and stale on update). The write routes run `withDerivedValues()` (`src/lib/brewfather/recipeCalc.ts`) server-side on every save and send og, fg, abv, ibu, color and each fermentable's percentage. Calibrated against Brewfather's own values on 21 recipes: OG ~0.4 pt, colour ~0.2 SRM, FG ~2.4 pt; IBU is approximate (±~30%) because Brewfather's temperature-dependent hopstand model is not reproduced. Other Brewfather-derived fields (per-hop IBU, pre/post-boil gravity, `data` water amounts) are not recalculated.
+   - Brewfather stores fermentable and recipe colour in **SRM**, and some imported recipes store flags as the strings `"TRUE"`/`"FALSE"` — use `isFlagSet()`, never a truthiness check.
 4. **Metric throughout.** The Brewfather API returns metric (L, kg, g, °C, SG). Do not add unit conversion.
 5. **Calculations must be pure functions with unit tests.** They decide real ingredient quantities; a silent regression wastes a $60 grain bill and six hours.
 
@@ -233,7 +240,7 @@ Phase 1 is done when all of these hold:
 Resist these. They are why the project stalled last time — the browsing layer got polished while the actual product went unbuilt.
 
 - ❌ Authentication / multi-user
-- ❌ Writing back to Brewfather
+- ❌ Writing back to Brewfather (superseded 2026-09-25: recipe writes are now in scope; batches and inventory stay read-only)
 - ❌ RAPT / Tilt live integration
 - ❌ Inventory management
 - ❌ More recipe browsing or filter work

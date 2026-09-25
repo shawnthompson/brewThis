@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import BrewSheet from '@/components/brewsheet/BrewSheet';
-import { createBrewfatherService } from '@/lib/brewfather/api';
+import { loadRecipeOrNull } from '@/lib/brewfather/api';
 import { parseOverride } from '@/lib/brewsheet/fromRecipe';
-import type { BrewfatherRecipe } from '@/types';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,22 +12,11 @@ type Props = {
 
 export const metadata: Metadata = { title: 'Brew Sheet — BrewThis' };
 
-async function loadRecipe(id: string): Promise<BrewfatherRecipe | null> {
-  try {
-    return await createBrewfatherService().getRecipeById(id);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Brewfather API error (404)')) {
-      return null;
-    }
-    throw new Error('Failed to load recipe from Brewfather');
-  }
-}
-
 export default async function BrewSheetPage({ params, searchParams }: Props) {
   const { id } = await params;
   const query = await searchParams;
 
-  const recipe = await loadRecipe(id);
+  const recipe = await loadRecipeOrNull(id);
   if (!recipe) notFound();
 
   const overrides = {
