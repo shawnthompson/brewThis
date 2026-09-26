@@ -92,9 +92,10 @@ describe('mashPhTargetFromRecipe', () => {
       ].join('\n'),
     });
     expect(input).toMatchObject({ strikeWaterL: 18, preBoilVolumeL: 25, totalWaterL: 30.2 });
-    expect(brewSheetPlanFromRecipe({ notes: 'Brew date: 2026-09-28\nSparge acid: 1.5 mL' })).toMatchObject({
+    expect(brewSheetPlanFromRecipe({ notes: 'Brew date: 2026-09-28\nSparge acid: 1.5 mL\nProcess: Optional cold crash 0–3 °C for 2–5 days. Packaging: purge keg; carbonate 2.4 volumes.' })).toMatchObject({
       brewDate: '2026-09-28',
       spargeAcidMl: 1.5,
+      process: 'Optional cold crash 0–3 °C for 2–5 days. Packaging: purge keg; carbonate 2.4 volumes.',
     });
     expect(brewSheetPlanFromRecipe({ notes: 'FG: unknown; measure on the Tilt.' }).fgUnknown).toBe(true);
   });

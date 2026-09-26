@@ -492,6 +492,7 @@ export default function BrewSheet({
             </ul>
           </>
         )}
+        {plan.process && <p className={styles.small}><strong>Recipe process plan:</strong> {plan.process}</p>}
       </Step>
 
       <Step n={next()} title="Finish and package">
@@ -506,6 +507,7 @@ export default function BrewSheet({
         </div>
         <ul className={styles.checklist}>
           <Check>{RULES.purgeKeg}</Check>
+          {plan.packaging && <Check>{plan.packaging}</Check>}
         </ul>
       </Step>
 

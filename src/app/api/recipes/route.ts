@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { BREWFATHER_CACHE_TAG, createBrewfatherService } from '@/lib/brewfather/api';
 import { withDerivedValues } from '@/lib/brewfather/recipeCalc';
-import { parseRecipeWrite } from '@/lib/brewfather/recipeInput';
+import { hasUnknownFgNote, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
 import { forbiddenOrigin, isSameOrigin, writeErrorResponse } from '@/lib/brewfather/writeRoute';
 import { ApiResponse } from '@/types';
 
@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const preserveUnknownFg = body?.preserveUnknownFg === true;
     const recipe = parseRecipeWrite(body?.recipe ?? body, { requireName: true });
+    const preserveUnknownFg = body?.preserveUnknownFg === true || hasUnknownFgNote(recipe.notes);
     // Brewfather does not calculate OG/FG/ABV/IBU/colour on API writes.
     const id = await createBrewfatherService().createRecipe(
       withDerivedValues(recipe, undefined, {

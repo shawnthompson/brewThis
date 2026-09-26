@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { BREWFATHER_CACHE_TAG, createBrewfatherService } from '@/lib/brewfather/api';
 import { isEmptyDraft } from '@/lib/brewfather/drafts';
 import { withDerivedValues } from '@/lib/brewfather/recipeCalc';
-import { isSampleRecipeId, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
+import { hasUnknownFgNote, isSampleRecipeId, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
 import { fail, forbiddenOrigin, isSameOrigin, writeErrorResponse } from '@/lib/brewfather/writeRoute';
 import { ApiResponse, BrewfatherRecipe } from '@/types';
 
@@ -24,11 +24,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const body = await request.json();
     const changes = parseRecipeWrite(body?.recipe, { requireName: false });
-    const preserveUnknownFg = body?.preserveUnknownFg === true;
     const baseVersion: unknown = body?.baseVersion;
 
     const service = createBrewfatherService();
     const current = await service.getRecipeById(id, { fresh: true });
+    const preserveUnknownFg = body?.preserveUnknownFg === true || hasUnknownFgNote(changes.notes ?? current.notes);
     const currentVersion = recipeVersion(current);
     if (typeof baseVersion !== 'string' || (currentVersion !== undefined && baseVersion !== currentVersion)) {
       return fail(
