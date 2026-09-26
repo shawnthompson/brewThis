@@ -12,6 +12,7 @@ import {
   brewfatherEfficiency,
   efficiencyFor,
   hopsByUse,
+  mashPhTargetFromRecipe,
   mashedFermentables,
   toBrewSheetInput,
   type BrewSheetOverrides,
@@ -134,6 +135,7 @@ export default function BrewSheet({
   const yeasts = recipe.yeasts ?? [];
   const spargeTempC = recipe.equipment?.spargeTemperature;
   const efficiency = efficiencyFor(recipe, overrides);
+  const mashPhTarget = mashPhTargetFromRecipe(recipe);
   const gravity = c.gravity;
   const preBoilTarget = gravity?.predictedPreBoilGravity;
   const mashInTempC = input.mashInTempC ?? input.mashTempC;
@@ -222,6 +224,8 @@ export default function BrewSheet({
               <tr><th>FG</th><td>{sg(recipe.fg)}</td></tr>
               <tr><th>ABV</th><td>{fmt(targetAbv)} %</td></tr>
               <tr><th>IBU</th><td>{fmt(recipe.ibu, 0)}</td></tr>
+              <tr><th>Mash pH TARGET</th><td>{mashPhTarget?.label ?? 'Not recorded in recipe note'}</td></tr>
+              <tr><th>Mash pH EXPECTED</th><td>{PH.expectedRange} on this water</td></tr>
               <tr><th>Predicted OG</th><td>{sg(gravity?.predictedOG)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
               <tr><th>Pre-boil gravity</th><td>{sg(preBoilTarget)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
             </tbody>
@@ -332,8 +336,10 @@ export default function BrewSheet({
 
       <Step n={next()} title="Mash pH at 15 minutes">
         <p className={styles.small}><strong>{PH.calibrate}</strong></p>
-        <p>{PH.target}</p>
+        <p><strong>TARGET:</strong> {mashPhTarget?.label ?? 'Not recorded in recipe note — record the recipe-specific target before brew day.'}</p>
+        <p><strong>EXPECTED:</strong> {PH.expectedRange} on this water. {PH.expected}</p>
         <ReadingField id="mashPh15" />
+        <p className={styles.warning} role="note"><strong>⚠ REVIEW REQUIRED</strong> {PH.provisionalThresholds}</p>
         <div className={styles.tree}>
           {PH_BRANCHES.map((b) => (
             <div key={b.id} className={styles.branch}>
