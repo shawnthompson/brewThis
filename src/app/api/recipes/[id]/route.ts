@@ -24,6 +24,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const body = await request.json();
     const changes = parseRecipeWrite(body?.recipe, { requireName: false });
+    const preserveUnknownFg = body?.preserveUnknownFg === true;
     const baseVersion: unknown = body?.baseVersion;
 
     const service = createBrewfatherService();
@@ -38,7 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Brewfather does not recalculate on API writes; derive from the merged recipe.
-    await service.updateRecipe(id, withDerivedValues(changes, current));
+    const derived = withDerivedValues(changes, current, {
+      includeFg: !preserveUnknownFg,
+      includeAbv: !preserveUnknownFg,
+    });
+    await service.updateRecipe(id, derived);
     revalidateTag(BREWFATHER_CACHE_TAG);
     return NextResponse.json({ success: true, data: { id } } as ApiResponse<{ id: string }>);
   } catch (error) {

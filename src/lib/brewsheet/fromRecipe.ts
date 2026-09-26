@@ -26,6 +26,20 @@ export interface MashPhTarget {
   label: string;
 }
 
+export interface BrewSheetPlan {
+  brewDate?: string;
+  fgUnknown?: boolean;
+  targetOg?: string;
+  targetAbv?: string;
+  packagedVolume?: string;
+  strikeWaterL?: number;
+  spargePrepareL?: number;
+  spargeMarkL?: number;
+  preBoilGravity?: string;
+  spargeAcidMl?: number;
+  packaging?: string;
+}
+
 export type EfficiencySource = 'override' | 'brewfather' | 'default';
 
 // Steps at or above this are mash-out, not a conversion rest.
@@ -120,6 +134,32 @@ export function hopsByUse(recipe: BrewfatherRecipe) {
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
+function noteLine(notes: string | undefined, label: string): string | undefined {
+  return notes?.split(/\r?\n/).find((line) => new RegExp(`^\\s*${label}\\s*:`, 'i').test(line));
+}
+
+function noteNumber(notes: string | undefined, label: string): number | undefined {
+  const line = noteLine(notes, label);
+  const match = line?.match(/([0-9]+(?:\.[0-9]+)?)/);
+  return match ? Number(match[1]) : undefined;
+}
+
+export function brewSheetPlanFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>): BrewSheetPlan {
+  return {
+    brewDate: noteLine(recipe.notes, 'Brew date')?.split(':').slice(1).join(':').trim(),
+    fgUnknown: /^unknown/i.test(noteLine(recipe.notes, 'FG')?.split(':').slice(1).join(':').trim() ?? ''),
+    targetOg: noteLine(recipe.notes, 'Target OG')?.split(':').slice(1).join(':').trim(),
+    targetAbv: noteLine(recipe.notes, 'Target ABV')?.split(':').slice(1).join(':').trim(),
+    packagedVolume: noteLine(recipe.notes, 'Expected packaged volume')?.split(':').slice(1).join(':').trim(),
+    strikeWaterL: noteNumber(recipe.notes, 'Strike water'),
+    spargePrepareL: noteNumber(recipe.notes, 'Sparge prepare'),
+    spargeMarkL: noteNumber(recipe.notes, 'Sparge mark'),
+    preBoilGravity: noteLine(recipe.notes, 'Pre-boil gravity')?.split(':').slice(1).join(':').trim(),
+    spargeAcidMl: noteNumber(recipe.notes, 'Sparge acid'),
+    packaging: recipe.notes?.match(/Packaging:\s*([^\n]+)/i)?.[1]?.trim(),
+  };
+}
+
 export function toBrewSheetInput(
   recipe: BrewfatherRecipe,
   overrides: BrewSheetOverrides = {}
@@ -128,6 +168,8 @@ export function toBrewSheetInput(
   const steps = recipe.mash?.steps ?? [];
   const sacchStep = saccharificationStep(steps);
   const mashTempC = overrides.mashTempC ?? (sacchStep && stepTemp(sacchStep)) ?? 66;
+  const preBoilVolumeL = noteNumber(recipe.notes, 'Pre-boil volume');
+  const totalWaterL = noteNumber(recipe.notes, 'Total water');
 
   // On a step mash (e.g. a 52 °C protein rest first) the strike water must hit
   // the first rest, not the conversion rest, or the earlier rest is skipped.
@@ -145,9 +187,11 @@ export function toBrewSheetInput(
     mashTempC,
     mashInTempC,
     grainTempC: overrides.grainTempC ?? DEFAULT_GRAIN_TEMP_C,
-    strikeWaterL: overrides.strikeWaterL,
+    strikeWaterL: overrides.strikeWaterL ?? brewSheetPlanFromRecipe(recipe).strikeWaterL,
     hasCrystalOrRoast: hasCrystalOrRoast(grist),
     efficiencyPct: efficiencyFor(recipe, overrides).efficiencyPct,
+    ...(preBoilVolumeL !== undefined ? { preBoilVolumeL } : {}),
+    ...(totalWaterL !== undefined ? { totalWaterL } : {}),
     fermentables: (recipe.fermentables ?? [])
       .filter((f) => !isAddedAfterBoil(f))
       .map((f) => ({ amountKg: f.amount ?? 0, potential: f.potential, mashed: isMashed(f) })),

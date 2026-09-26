@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BrewfatherRecipe } from '@/types';
 import {
   efficiencyFor,
+  brewSheetPlanFromRecipe,
   hopsByUse,
   mashPhTargetFromRecipe,
   parseOverride,
@@ -75,6 +76,27 @@ describe('mashPhTargetFromRecipe', () => {
       high: 5.6,
       label: '5.5–5.6',
     });
+  });
+
+  it('maps the recipe-specific water plan and brew date', () => {
+    const input = toBrewSheetInput({
+      ...recipe,
+      notes: [
+        'Brew date: 2026-09-28',
+        'Strike water: 18.0 L at 72 °C (calc)',
+        'Sparge prepare: 12.5 L',
+        'Sparge mark: 25.0 L',
+        'Sparge acid: 1.5 mL',
+        'Pre-boil volume: 25.0 L hot',
+        'Total water: 30.2 L',
+      ].join('\n'),
+    });
+    expect(input).toMatchObject({ strikeWaterL: 18, preBoilVolumeL: 25, totalWaterL: 30.2 });
+    expect(brewSheetPlanFromRecipe({ notes: 'Brew date: 2026-09-28\nSparge acid: 1.5 mL' })).toMatchObject({
+      brewDate: '2026-09-28',
+      spargeAcidMl: 1.5,
+    });
+    expect(brewSheetPlanFromRecipe({ notes: 'FG: unknown; measure on the Tilt.' }).fgUnknown).toBe(true);
   });
 
   it('matches the target range instead of an earlier cooling range', () => {

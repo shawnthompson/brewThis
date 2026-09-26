@@ -11,9 +11,16 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return forbiddenOrigin();
 
   try {
-    const recipe = parseRecipeWrite(await request.json(), { requireName: true });
+    const body = await request.json();
+    const preserveUnknownFg = body?.preserveUnknownFg === true;
+    const recipe = parseRecipeWrite(body?.recipe ?? body, { requireName: true });
     // Brewfather does not calculate OG/FG/ABV/IBU/colour on API writes.
-    const id = await createBrewfatherService().createRecipe(withDerivedValues(recipe));
+    const id = await createBrewfatherService().createRecipe(
+      withDerivedValues(recipe, undefined, {
+        includeFg: !preserveUnknownFg,
+        includeAbv: !preserveUnknownFg,
+      })
+    );
     revalidateTag(BREWFATHER_CACHE_TAG);
 
     return NextResponse.json({ success: true, data: { id } } as ApiResponse<{ id: string }>, {
