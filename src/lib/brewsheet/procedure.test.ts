@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { PH_BRANCHES, phBranch, readingNumber } from './procedure';
+import { PH, PH_BRANCHES, phBranch, readingNumber } from './procedure';
+
+describe('mash pH instructions', () => {
+  it('uses the NIST buffer calibration instruction', () => {
+    expect(PH.calibrate).toBe('Calibrate the pH meter the day before with fresh buffer — two points, NIST set, 6.86 first then 4.00.');
+  });
+
+  it('keeps the water expectation separate from the recipe target', () => {
+    expect(PH.expectedRange).toBe('5.5–5.6');
+    expect(PH.expected).toContain('Expected mash pH 5.5–5.6 on this water');
+    expect(PH.provisionalThresholds).toContain('OPEN DECISION');
+  });
+});
 
 describe('mash pH decision tree', () => {
   // A wording test would not have caught the old 5.2–5.5 hole; sweep the values.

@@ -3,6 +3,7 @@ import type { BrewfatherRecipe } from '@/types';
 import {
   efficiencyFor,
   hopsByUse,
+  mashPhTargetFromRecipe,
   parseOverride,
   saccharificationStep,
   toBrewSheetInput,
@@ -64,6 +65,30 @@ describe('toBrewSheetInput', () => {
   it('applies overrides', () => {
     const input = toBrewSheetInput(recipe, { batchSizeL: 21, mashTempC: 65, grainTempC: 15, strikeWaterL: 17 });
     expect(input).toMatchObject({ batchSizeL: 21, mashTempC: 65, grainTempC: 15, strikeWaterL: 17 });
+  });
+});
+
+describe('mashPhTargetFromRecipe', () => {
+  it('reads the per-recipe target range from notes', () => {
+    expect(mashPhTargetFromRecipe({ notes: 'Mash pH target: 5.5–5.6' })).toEqual({
+      low: 5.5,
+      high: 5.6,
+      label: '5.5–5.6',
+    });
+  });
+
+  it('matches the target range instead of an earlier cooling range', () => {
+    expect(mashPhTargetFromRecipe({
+      notes: 'Measure pH on a sample cooled to 20–25 °C; mash pH target: 5.3–5.4',
+    })?.label).toBe('5.3–5.4');
+  });
+
+  it('does not invent a target when the recipe note has none', () => {
+    expect(mashPhTargetFromRecipe({ notes: 'Use Montreal water.' })).toBeUndefined();
+  });
+
+  it('rejects implausible pH ranges', () => {
+    expect(mashPhTargetFromRecipe({ notes: 'Mash pH target: 3.0–3.5' })).toBeUndefined();
   });
 });
 

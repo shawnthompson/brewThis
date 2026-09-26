@@ -20,6 +20,12 @@ export interface BrewSheetOverrides {
   efficiencyPct?: number;
 }
 
+export interface MashPhTarget {
+  low: number;
+  high: number;
+  label: string;
+}
+
 export type EfficiencySource = 'override' | 'brewfather' | 'default';
 
 // Steps at or above this are mash-out, not a conversion rest.
@@ -76,6 +82,24 @@ export function isMashed(f: BrewfatherFermentable): boolean {
 
 export function mashedFermentables(recipe: BrewfatherRecipe): BrewfatherFermentable[] {
   return (recipe.fermentables ?? []).filter(isMashed);
+}
+
+/** Reads a per-recipe mash pH range from the recipe notes. */
+export function mashPhTargetFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>): MashPhTarget | undefined {
+  const notes = recipe.notes ?? '';
+  const targetPattern = /(?:mash\s*pH\s*target|target\s*(?:mash\s*)?pH|pH\s*target)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)/i;
+  const match = notes
+    .split(/\r?\n/)
+    .map((line) => line.match(targetPattern))
+    .find((candidate): candidate is RegExpMatchArray => candidate !== null);
+  if (!match) return undefined;
+
+  const low = Number(match[1]);
+  const high = Number(match[2]);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || low > high || low < 4 || high > 7) {
+    return undefined;
+  }
+  return { low, high, label: `${low.toFixed(1)}–${high.toFixed(1)}` };
 }
 
 export function hopsByUse(recipe: BrewfatherRecipe) {
