@@ -7,7 +7,7 @@ interface RecipeFilters {
   hops: string[];
   abvRange: [number, number];
   ibuRange: [number, number];
-  brewingStatus: 'all' | 'brewed' | 'not-brewed';
+  brewingStatus: 'all' | 'brewed' | 'planned' | 'not-brewed';
   sortBy: 'name' | 'abv' | 'ibu' | 'og' | '_created';
   sortOrder: 'asc' | 'desc';
 }
@@ -20,7 +20,7 @@ interface FilterSidebarProps {
     hops: string[];
     abvRange: [number, number];
     ibuRange: [number, number];
-    brewingStatus: 'all' | 'brewed' | 'not-brewed';
+    brewingStatus: 'all' | 'brewed' | 'planned' | 'not-brewed';
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   };
@@ -29,7 +29,7 @@ interface FilterSidebarProps {
   availableHops: string[];
   maxAbv: number;
   maxIbu: number;
-  onFilterChange: (key: keyof RecipeFilters, value: string | string[] | number[] | 'all' | 'brewed' | 'not-brewed' | 'name' | 'abv' | 'ibu' | 'og' | '_created' | 'asc' | 'desc') => void;
+  onFilterChange: (key: keyof RecipeFilters, value: string | string[] | number[] | 'all' | 'brewed' | 'planned' | 'not-brewed' | 'name' | 'abv' | 'ibu' | 'og' | '_created' | 'asc' | 'desc') => void;
   onClearFilters: () => void;
   isOpen: boolean;
   onToggle: () => void;
@@ -179,6 +179,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               >
                 <option value="all">All Recipes</option>
                 <option value="brewed">Brewed Before</option>
+                <option value="planned">Planned Batch</option>
                 <option value="not-brewed">Not Brewed Yet</option>
               </select>
             )}

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { RecipeCardProps } from '@/types';
+import { isClonedRecipe } from '@/lib/brewfather/recipeStatus';
 
 interface BrewingHistoryData {
   recipeId: string;
@@ -18,6 +19,7 @@ interface BrewingHistoryData {
 
 interface ExtendedRecipeCardProps extends RecipeCardProps {
   hasBeenBrewed?: boolean;
+  hasPlannedBatch?: boolean;
   brewingHistory?: BrewingHistoryData[];
 }
 
@@ -26,6 +28,7 @@ export default function RecipeCard({
   onSelect, 
   onImport,
   hasBeenBrewed = false,
+  hasPlannedBatch = false,
   brewingHistory = [],
   className = '' 
 }: ExtendedRecipeCardProps) {
@@ -77,11 +80,27 @@ export default function RecipeCard({
           {recipe.name}
         </h5>
         
-        {/* Style Badge */}
-        {recipe.style?.name && (
-          <span className={`badge bg-${getStyleColor(recipe.style)} mb-2 align-self-start`}>
-            {recipe.style.name}
-          </span>
+        {/* Style, clone and planned badges */}
+        {(recipe.style?.name || isClonedRecipe(recipe) || hasPlannedBatch) && (
+          <div className="d-flex flex-wrap gap-1 mb-2">
+            {recipe.style?.name && (
+              <span className={`badge bg-${getStyleColor(recipe.style)}`}>
+                {recipe.style.name}
+              </span>
+            )}
+            {isClonedRecipe(recipe) && (
+              <span className="badge bg-secondary" title="Cloned from another Brewfather recipe">
+                <i className="fas fa-clone me-1" aria-hidden="true"></i>
+                Cloned
+              </span>
+            )}
+            {hasPlannedBatch && (
+              <span className="badge bg-info text-dark" title="Has a batch in Planning in Brewfather">
+                <i className="fas fa-calendar me-1" aria-hidden="true"></i>
+                Planned batch
+              </span>
+            )}
+          </div>
         )}
         
         {/* Description */}

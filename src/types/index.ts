@@ -2,6 +2,7 @@
 export interface BrewfatherRecipe {
   _id: string;
   _rev?: string; // changes on every save; used to detect edits made elsewhere
+  _origin?: string | null; // source recipe ID when cloned in Brewfather
   _timestamp_ms?: number;
   name: string;
   type?: string; // Recipe type (e.g., "All Grain", "Extract", "Partial Mash")
