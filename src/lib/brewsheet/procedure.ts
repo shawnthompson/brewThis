@@ -8,6 +8,8 @@ export const SAFETY = {
     'Heaviest, most dangerous moment of the day. Roughly 2× the dry grain weight, soaked at 75 °C. Use both handles, lift with your legs, seat it square on its supports before letting go. Keep your face out of the steam — it will scald.',
   boilOver:
     'BOIL-OVER WATCH. The danger window is the first few minutes as the hot break forms. Stay at the kettle. Cut the element the instant it climbs. Keep a spray bottle of water in reach. Boiling wort scalds badly and goes over in seconds.',
+  boilOverRatio:
+    '25 L / 35 L = 0.71, above the 0.65 threshold.',
   lacticAcid:
     "Corrosive. Eye protection. Always acid into water, never water into acid. Syringe or graduated dropper only — 'about a capful' is not a dose at 88%.",
   transfer:
@@ -16,6 +18,8 @@ export const SAFETY = {
     'A 32 L bucket holding 19 L weighs ~20 kg. Lift with your legs and get it onto a solid waist-height surface before shaking it.',
   fermenterLight:
     'Keep out of direct light — it is clear plastic and hop-forward beer lightstrikes fast.',
+  vesselLimit:
+    '25 L exceeds KegLand\'s recommended boil limit for the BrewZilla Gen 4.1 of 24.6 L (6.5 gal). Stop at 24.5 L and accept ~18.6 L into the fermenter.',
   fgInstrument:
     'FG must be taken on a hydrometer or Tilt, never a refractometer. Refractometers read falsely high once alcohol is present, which invents an ABV shortfall that is not real.',
 } as const;
@@ -24,7 +28,7 @@ export const ACID_CAVEAT =
   "Acid doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and deliberately only partially corrected, to stay under the ~400 mg/L lactic flavour threshold. Mash pH must be measured.";
 
 export const PH = {
-  calibrate: 'Calibrate the pH meter the day before with fresh buffer — two points, NIST set, 6.86 first then 4.00.',
+  calibrate: 'Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.',
   expectedRange: '5.5–5.6',
   expected:
     'Expected mash pH 5.5–5.6 on this water, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
@@ -114,6 +118,7 @@ export type ReadingId =
   | 'spargePhBeforeUse'
   | 'preBoilVolume'
   | 'preBoilGravity'
+  | 'preBoilDeadspace'
   | 'whirlpoolTemp'
   | 'whirlpoolDuration'
   | 'transferTemp'
@@ -128,6 +133,8 @@ export interface Reading {
   id: ReadingId;
   label: string;
   unit?: string;
+  counts?: boolean;
+  displayNumber?: string;
 }
 
 // Master list, in the order the readings are taken. Numbers are position + 1.
@@ -141,6 +148,7 @@ export const READINGS: Reading[] = [
   { id: 'spargePhBeforeUse', label: 'Sparge pH before use' },
   { id: 'preBoilVolume', label: 'Pre-boil volume', unit: 'L' },
   { id: 'preBoilGravity', label: 'Pre-boil gravity', unit: 'SG' },
+  { id: 'preBoilDeadspace', label: 'Malt-pipe deadspace', unit: 'L', counts: false, displayNumber: '9b' },
   { id: 'whirlpoolTemp', label: 'Whirlpool temp', unit: '°C' },
   { id: 'whirlpoolDuration', label: 'Whirlpool duration', unit: 'min' },
   { id: 'transferTemp', label: 'Temp at transfer', unit: '°C' },
@@ -153,11 +161,11 @@ export const READINGS: Reading[] = [
 ];
 
 export function readingNumber(id: ReadingId): number {
-  return READINGS.findIndex((r) => r.id === id) + 1;
+  return READINGS.filter((r) => r.counts !== false).findIndex((r) => r.id === id) + 1;
 }
 
-export function reading(id: ReadingId): Reading & { number: number } {
+export function reading(id: ReadingId): Reading & { number: number | string } {
   const r = READINGS.find((x) => x.id === id);
   if (!r) throw new Error(`Unknown reading ${id}`);
-  return { ...r, number: readingNumber(id) };
+  return { ...r, number: r.displayNumber ?? readingNumber(id) };
 }

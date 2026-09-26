@@ -118,10 +118,19 @@ export function calculateDerived(recipe: RecipeLike): DerivedValues {
  */
 export function withDerivedValues<T extends Partial<BrewfatherRecipe>>(
   changes: T,
-  current?: BrewfatherRecipe
-): T & Pick<BrewfatherRecipe, 'og' | 'fg' | 'abv' | 'ibu' | 'color' | 'fermentables'> {
+  current?: BrewfatherRecipe,
+  options: { includeFg?: boolean; includeAbv?: boolean } = {}
+): T & Pick<BrewfatherRecipe, 'og' | 'abv' | 'ibu' | 'color' | 'fermentables'> & Partial<Pick<BrewfatherRecipe, 'fg'>> {
   const merged = { ...(current ?? {}), ...changes } as RecipeLike;
   const d = calculateDerived(merged);
   const fermentables = merged.fermentables?.map((f, i) => ({ ...f, percentage: d.fermentablePercentages[i] }));
-  return { ...changes, fermentables, og: d.og, fg: d.fg, abv: d.abv, ibu: d.ibu, color: d.color };
+  return {
+    ...changes,
+    fermentables,
+    og: d.og,
+    ...(options.includeFg === false ? {} : { fg: d.fg }),
+    ...(options.includeAbv === false ? {} : { abv: d.abv }),
+    ibu: d.ibu,
+    color: d.color,
+  };
 }

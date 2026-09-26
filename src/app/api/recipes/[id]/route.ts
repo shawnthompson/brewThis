@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { BREWFATHER_CACHE_TAG, createBrewfatherService } from '@/lib/brewfather/api';
 import { isEmptyDraft } from '@/lib/brewfather/drafts';
 import { withDerivedValues } from '@/lib/brewfather/recipeCalc';
-import { isSampleRecipeId, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
+import { hasUnknownFgNote, isSampleRecipeId, parseRecipeWrite } from '@/lib/brewfather/recipeInput';
 import { fail, forbiddenOrigin, isSameOrigin, writeErrorResponse } from '@/lib/brewfather/writeRoute';
 import { ApiResponse, BrewfatherRecipe } from '@/types';
 
@@ -28,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const service = createBrewfatherService();
     const current = await service.getRecipeById(id, { fresh: true });
+    const preserveUnknownFg = body?.preserveUnknownFg === true || hasUnknownFgNote(changes.notes ?? current.notes);
     const currentVersion = recipeVersion(current);
     if (typeof baseVersion !== 'string' || (currentVersion !== undefined && baseVersion !== currentVersion)) {
       return fail(
@@ -38,7 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Brewfather does not recalculate on API writes; derive from the merged recipe.
-    await service.updateRecipe(id, withDerivedValues(changes, current));
+    const derived = withDerivedValues(changes, current, {
+      includeFg: !preserveUnknownFg,
+      includeAbv: !preserveUnknownFg,
+    });
+    await service.updateRecipe(id, derived);
     revalidateTag(BREWFATHER_CACHE_TAG);
     return NextResponse.json({ success: true, data: { id } } as ApiResponse<{ id: string }>);
   } catch (error) {

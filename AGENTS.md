@@ -79,7 +79,7 @@ water, 18.2 L strike, 10.9 L sparge, 72.2 °C strike, and 4.0 mL strike acid.
 ## Mash pH
 
 The pH meter instruction is exactly:
-"Calibrate the pH meter the day before with fresh buffer — two points, NIST set,
+"Calibrate the pH meter the day before with fresh buffer - two points, NIST set,
 6.86 first then 4.00."
 
 The mash pH TARGET is a per-recipe value read from the recipe note. Do not

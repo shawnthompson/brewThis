@@ -48,6 +48,20 @@ describe('calculateBrewSheet — Citra IPA golden fixture', () => {
     expect(c.preBoilFillRatio).toBeCloseTo(23.9 / 35, 5);
     expect(c.boilOverRisk).toBe(true);
   });
+
+  it('flags the revised Citra de Victo 25 L hot pre-boil plan', () => {
+    const revised = calculateBrewSheet({
+      ...citraIPA,
+      preBoilVolumeL: 25,
+      totalWaterL: 30.2,
+      strikeWaterL: 18,
+    });
+    expect(revised.preBoilVolumeL).toBe(25);
+    expect(revised.totalWaterL).toBe(30.2);
+    expect(revised.spargeWaterL).toBeCloseTo(12.2, 10);
+    expect(revised.preBoilFillRatio).toBeCloseTo(25 / 35, 10);
+    expect(revised.boilOverRisk).toBe(true);
+  });
 });
 
 describe('calculateBrewSheet — variations', () => {

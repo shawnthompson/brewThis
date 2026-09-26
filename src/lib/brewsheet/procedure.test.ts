@@ -3,7 +3,7 @@ import { PH, PH_BRANCHES, phBranch, readingNumber } from './procedure';
 
 describe('mash pH instructions', () => {
   it('uses the NIST buffer calibration instruction', () => {
-    expect(PH.calibrate).toBe('Calibrate the pH meter the day before with fresh buffer — two points, NIST set, 6.86 first then 4.00.');
+    expect(PH.calibrate).toBe('Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.');
   });
 
   it('keeps the water expectation separate from the recipe target', () => {
@@ -14,7 +14,7 @@ describe('mash pH instructions', () => {
 });
 
 describe('mash pH decision tree', () => {
-  // A wording test would not have caught the old 5.2–5.5 hole; sweep the values.
+  // A wording test would not have caught a gap in the old target branches; sweep the values.
   it('matches exactly one branch for every reading from 4.8 to 6.4', () => {
     for (let i = 0; i <= 32; i++) {
       const ph = Math.round((4.8 + i * 0.05) * 100) / 100;
