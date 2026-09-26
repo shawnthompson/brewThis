@@ -10,11 +10,15 @@ export function isClonedRecipe(recipe: Pick<BrewfatherRecipe, '_origin'>): boole
   return typeof recipe._origin === 'string' && recipe._origin.trim() !== '';
 }
 
+export function isPlanningStatus(status?: string): boolean {
+  return status?.toLowerCase() === 'planning';
+}
+
 /** Recipes that have at least one batch still in Brewfather's Planning status. */
 export function plannedRecipeIds(batches: Pick<BrewfatherBatch, 'status' | 'recipe'>[]): Set<string> {
   return new Set(
     batches
-      .filter((b) => b.status?.toLowerCase() === 'planning' && b.recipe?._id)
+      .filter((b) => isPlanningStatus(b.status) && b.recipe?._id)
       .map((b) => b.recipe!._id)
   );
 }

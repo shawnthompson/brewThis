@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BrewfatherRecipe } from '@/types';
-import { isClonedRecipe, plannedRecipeIds } from './recipeStatus';
+import { isClonedRecipe, isPlanningStatus, plannedRecipeIds } from './recipeStatus';
 
 describe('isClonedRecipe', () => {
   it('is true when Brewfather recorded a source recipe', () => {
@@ -34,5 +34,14 @@ describe('plannedRecipeIds', () => {
       { status: 'Planning', recipe: recipe('a') },
       { status: 'Planning', recipe: recipe('a') },
     ]).size).toBe(1);
+  });
+});
+
+describe('isPlanningStatus', () => {
+  it('matches Planning case-insensitively', () => {
+    expect(isPlanningStatus('Planning')).toBe(true);
+    expect(isPlanningStatus('planning')).toBe(true);
+    expect(isPlanningStatus('Completed')).toBe(false);
+    expect(isPlanningStatus(undefined)).toBe(false);
   });
 });

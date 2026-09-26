@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import RecipeCard from '@/components/RecipeCard';
 import RecipeDetailModal from '@/components/RecipeDetailModal';
-import { plannedRecipeIds } from '@/lib/brewfather/recipeStatus';
+import { isPlanningStatus, plannedRecipeIds } from '@/lib/brewfather/recipeStatus';
 import EmptyDraftCleanup from '@/components/EmptyDraftCleanup';
 import FilterSidebar from '@/components/FilterSidebar';
 import { BrewingSpinner } from '@/components/LoadingSpinner';
@@ -87,7 +87,7 @@ export default function Home() {
     setPlannedIds(plannedRecipeIds(batches));
 
     const brewingHistoryFromBatches: BrewingHistory[] = batches
-      .filter(batch => batch.recipe?._id && batch.brewDate && batch.status?.toLowerCase() !== 'planning')
+      .filter(batch => batch.recipe?._id && batch.brewDate && !isPlanningStatus(batch.status))
       .map(batch => {
         // Convert brewDate from timestamp to ISO date string
         const brewDate = typeof batch.brewDate === 'number' 
@@ -175,17 +175,42 @@ export default function Home() {
     const loadAllBatches = async () => {
       try {
         console.log('Loading batches from Brewfather...');
-        const response = await fetch('/api/batches?limit=50&complete=true&order_by=_created&order_by_direction=desc');
-        const result = await response.json();
-        
-        if (result.success && result.data?.recipes) {
-          setAllBatches(result.data.recipes);
-          console.log(`Loaded ${result.data.recipes.length} batches from Brewfather`);
-          return result.data.recipes;
-        } else {
-          console.warn('No batches found or API error:', result.message);
-          return [];
+        const batches: BrewfatherBatch[] = [];
+        let startAfter: string | undefined;
+
+        while (true) {
+          const searchParams = new URLSearchParams({
+            limit: '50',
+            complete: 'true',
+            order_by: '_created',
+            order_by_direction: 'desc',
+          });
+          if (startAfter) searchParams.set('start_after', startAfter);
+
+          const response = await fetch(`/api/batches?${searchParams.toString()}`);
+          const result = await response.json();
+
+          if (!result.success || !result.data?.recipes) {
+            console.warn('No batches found or API error:', result.message);
+            return [];
+          }
+
+          const page = result.data.recipes as BrewfatherBatch[];
+          batches.push(...page);
+
+          if (!result.data.hasMore || page.length === 0) break;
+
+          const lastBatchId = page[page.length - 1]?._id;
+          if (!lastBatchId || lastBatchId === startAfter) {
+            console.warn('Stopping batch pagination because Brewfather returned no next cursor');
+            break;
+          }
+          startAfter = lastBatchId;
         }
+
+        setAllBatches(batches);
+        console.log(`Loaded ${batches.length} batches from Brewfather`);
+        return batches;
       } catch (error) {
         console.error('Error loading batches:', error);
         return [];
@@ -214,7 +239,9 @@ export default function Home() {
           // Merge with any batch-synced history
           setBrewingHistory(prev => {
             const existingIds = new Set(prev.map(h => h.recipeId));
-            const newFromStorage = storedHistory.filter((h: BrewingHistory) => !existingIds.has(h.recipeId));
+            const newFromStorage = storedHistory.filter((h: BrewingHistory) =>
+              !isPlanningStatus(h.status) && !existingIds.has(h.recipeId)
+            );
             return [...prev, ...newFromStorage];
           });
         }
