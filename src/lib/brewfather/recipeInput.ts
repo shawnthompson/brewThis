@@ -34,6 +34,11 @@ const STEP_FIELDS = ['mash', 'fermentation'] as const;
 
 export class RecipeInputError extends Error {}
 
+export function hasUnknownFgNote(notes: string | undefined): boolean {
+  const line = notes?.split(/\r?\n/).find((value) => /^\s*FG\s*:/i.test(value));
+  return /^unknown\b/i.test(line?.split(':').slice(1).join(':').trim() ?? '');
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

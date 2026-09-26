@@ -47,6 +47,8 @@ export interface BrewSheetInput {
   strikeWaterL?: number; // override; strike temp is always recalculated from it
   hasCrystalOrRoast?: boolean;
   efficiencyPct?: number; // brewhouse (into fermenter); defaults to equipment.efficiencyPct
+  preBoilVolumeL?: number; // recipe-specific measured-hot plan; otherwise derive from the baseline formula
+  totalWaterL?: number; // recipe-specific water chain; otherwise derive from pre-boil volume + absorption
   fermentables?: ExtractItem[]; // enables gravity prediction
 }
 
@@ -193,8 +195,8 @@ export function calculateBrewSheet(
   const grainAbsorptionL = input.grainKg * equipment.grainAbsorptionLPerKg;
   const boilOffL = equipment.boilOffRateLPerHour * (input.boilMinutes / 60);
   const hopLossL = (input.whirlpoolHopG * equipment.hopAbsorptionMlPerG) / 1000;
-  const preBoilVolumeL = input.batchSizeL + boilOffL + hopLossL + equipment.trubLossL;
-  const totalWaterL = preBoilVolumeL + grainAbsorptionL;
+  const preBoilVolumeL = input.preBoilVolumeL ?? input.batchSizeL + boilOffL + hopLossL + equipment.trubLossL;
+  const totalWaterL = input.totalWaterL ?? preBoilVolumeL + grainAbsorptionL;
   const strikeWaterL = input.strikeWaterL ?? input.grainKg * DEFAULT_MASH_THICKNESS_L_PER_KG;
   const spargeWaterL = totalWaterL - strikeWaterL;
   const preBoilFillRatio = preBoilVolumeL / equipment.kettleVolumeL;
