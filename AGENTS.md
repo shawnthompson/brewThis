@@ -22,9 +22,12 @@ The app does not replace Brewfather.
    `BREWFATHER_USERID` and `BREWFATHER_API`.
 2. Safety text is static hand-written template constants copied verbatim.
    Never generate, paraphrase, or LLM-write a warning at runtime.
-3. Brewfather is read-only. Use only `recipes.read`, `batches.read`, and
-   `inventory.read`. Never add recipe, batch, or inventory write/delete paths.
-   The API permits 500 calls/hour: cache reads and avoid redundant calls.
+3. Brewfather recipes are read/write/delete; batches and inventory are
+   read-only. Use `recipes.read`, `recipes.write`, `recipes.delete`,
+   `batches.read`, and `inventory.read`. The API permits 500 calls/hour: cache
+   reads and avoid redundant calls. Recipe writes must use complete ingredient
+   arrays, fresh-read `_rev` version checks, same-origin/editable-field guards,
+   typed-name delete confirmation, and cache invalidation after every write.
 4. Metric throughout: L, kg, g, °C, and SG. Do not add unit conversion.
 5. Calculations are pure functions with unit tests. They determine real
    ingredient quantities and must stay anchored to the Citra IPA golden fixture.

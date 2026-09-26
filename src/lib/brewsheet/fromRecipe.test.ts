@@ -77,8 +77,18 @@ describe('mashPhTargetFromRecipe', () => {
     });
   });
 
+  it('matches the target range instead of an earlier cooling range', () => {
+    expect(mashPhTargetFromRecipe({
+      notes: 'Measure pH on a sample cooled to 20–25 °C; mash pH target: 5.3–5.4',
+    })?.label).toBe('5.3–5.4');
+  });
+
   it('does not invent a target when the recipe note has none', () => {
     expect(mashPhTargetFromRecipe({ notes: 'Use Montreal water.' })).toBeUndefined();
+  });
+
+  it('rejects implausible pH ranges', () => {
+    expect(mashPhTargetFromRecipe({ notes: 'Mash pH target: 3.0–3.5' })).toBeUndefined();
   });
 });
 

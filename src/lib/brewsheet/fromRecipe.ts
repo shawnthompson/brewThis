@@ -87,20 +87,18 @@ export function mashedFermentables(recipe: BrewfatherRecipe): BrewfatherFermenta
 /** Reads a per-recipe mash pH range from the recipe notes. */
 export function mashPhTargetFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>): MashPhTarget | undefined {
   const notes = recipe.notes ?? '';
-  const line = notes
+  const targetPattern = /(?:mash\s*pH\s*target|target\s*(?:mash\s*)?pH|pH\s*target)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)/i;
+  const match = notes
     .split(/\r?\n/)
-    .find((candidate) =>
-      /pH/i.test(candidate) &&
-      /\d+(?:\.\d+)?\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?/.test(candidate)
-    );
-  if (!line) return undefined;
-
-  const match = line.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)/i);
+    .map((line) => line.match(targetPattern))
+    .find((candidate): candidate is RegExpMatchArray => candidate !== null);
   if (!match) return undefined;
 
   const low = Number(match[1]);
   const high = Number(match[2]);
-  if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) return undefined;
+  if (!Number.isFinite(low) || !Number.isFinite(high) || low > high || low < 4 || high > 7) {
+    return undefined;
+  }
   return { low, high, label: `${low.toFixed(1)}–${high.toFixed(1)}` };
 }
 
