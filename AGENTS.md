@@ -22,9 +22,12 @@ The app does not replace Brewfather.
    `BREWFATHER_USERID` and `BREWFATHER_API`.
 2. Safety text is static hand-written template constants copied verbatim.
    Never generate, paraphrase, or LLM-write a warning at runtime.
-3. Brewfather recipes are read/write/delete; batches and inventory are
-   read-only. Use `recipes.read`, `recipes.write`, `recipes.delete`,
-   `batches.read`, and `inventory.read`. The API permits 500 calls/hour: cache
+3. Brewfather recipes are read/write/delete; inventory is read-only. Batches are
+   read-only except measured-values PATCH (`batches.write`), which is permitted
+   only from an explicit user-triggered action that previews exactly which fields
+   it sends — never automatically, and never as a side effect of saving a reading.
+   Use `recipes.read`, `recipes.write`, `recipes.delete`, `batches.read`,
+   `batches.write`, and `inventory.read`. The API permits 500 calls/hour: cache
    reads and avoid redundant calls. Recipe writes must use complete ingredient
    arrays, fresh-read `_rev` version checks, same-origin/editable-field guards,
    typed-name delete confirmation, and cache invalidation after every write.
@@ -55,8 +58,11 @@ The sheet is at `/recipes/[id]/brewsheet`. Keep the calculation engine pure in
 
 Use the BrewZilla defaults: 35 L kettle, 3.0 L/h estimated boil-off, 1.0 L/kg
 grain absorption, 4.5 mL/g hop absorption, 1.0 L trub loss, 76% assumed
-efficiency, 3.5 L/kg mash thickness, and 20 °C grain temperature. Mark
-derived estimates with `(est.)`.
+   efficiency, 3.5 L/kg mash thickness, and 20 °C grain temperature. Mark
+   derived estimates with `(est.)` — on screen and in print. Estimate status is not
+   provenance: keep the `(est.)` marks on the printed sheet, and keep derivations off it
+   (assumption paragraphs, worked examples, formulas and caveat prose render with
+   `d-print-none`).
 
 Water calculations must retain hop loss:
 
@@ -74,29 +80,41 @@ Strike temperature must be recalculated whenever strike volume changes:
 The golden fixture is Citra IPA: 19 L batch, 5.20 kg grain, 60 min boil, 200 g
 whirlpool hops, 66.7 °C mash, 20 °C grain. Expected values include 5.20 L
 absorption, 3.00 L boil-off, 0.90 L hop loss, 23.9 L pre-boil, 29.1 L total
-water, 18.2 L strike, 10.9 L sparge, 72.2 °C strike, and 4.0 mL strike acid.
+   water, 18.2 L strike, 10.9 L sparge, 72.2 °C strike, and 4.0 mL strike acid.
+
+⚠️ FLAGGED 2026-09-26: the fixture's 23.9 L pre-boil / 29.1 L total-water chain is not yet
+reconciled with the 2026-09-24 correction (4% cooling shrinkage + 50 g Cascade absorption
+→ 25.0 L hot pre-boil). Do not change the fixture until this is settled.
+
+Hop containment is computed from the recipe's hops (`hopContainment()`), never hardcoded.
+Do not add a second mechanism.
 
 ## Mash pH
 
-The pH meter instruction is exactly:
-"Calibrate the pH meter the day before with fresh buffer - two points, NIST set,
-6.86 first then 4.00."
+The pH meter is calibrated as of 2026-09-26. **Do not recalibrate before brew day.**
+The day-before step reads: "Meter calibrated 2026-09-26. Do not recalibrate before
+brewing. Take readings through the meter display offset." (`PH.instrumentStatus`).
+The old "calibrate the day before" instruction is retired.
+
+The instrument carries a flat 0.05–0.10 pH LOW display offset, measured 2026-09-26
+(4.00 read 3.97; 9.18 read 9.13/9.10; distilled 5.50 against the 5.6 air-equilibrium).
+It is not a slope error and not the 0.3-high failure the 5.8 guard looks for. It is
+configured once per instrument in `PH_INSTRUMENT` and applied by the pure function
+`expectedMashPhDisplay(target, instrument)`.
 
 The mash pH TARGET is a per-recipe value read from the recipe note. Do not
 invent a global target. The Citra IPA golden fixture target is 5.5–5.6.
-The sheet must show TARGET and EXPECTED as separately labelled numbers.
-EXPECTED is the water-based expectation and must not be presented as the
-recipe TARGET.
+The sheet must show TARGET and EXPECTED as separately labelled numbers. EXPECTED is the
+per-recipe TARGET shifted by the instrument's display offset (Citra IPA: TARGET 5.5–5.6
+→ EXPECTED display 5.40–5.55) and must not be presented as the recipe TARGET.
 
 Keep the guard: above 5.8, check the meter against a second reference before
 adding acid. The meter currently carries an approximately 0.1 pH LOW bias,
 unverified until it is retested after an electrode soak.
 
-OPEN DECISION — FLAGGED: the in-mash correction thresholds, including the old
-"above 5.4 -> add 1 mL" rule, were derived against a global target. Re-derive
-them against the per-recipe target before changing or presenting them as final.
-Do not silently choose new thresholds. Keep exhaustive branch coverage in
-`procedure.test.ts` while this decision is open.
+CLOSED 2026-09-26: in-mash thresholds are derived from the per-recipe TARGET, not from the
+old global 5.2–5.4 target (5.5–5.6 → branches at 5.5, 5.6 and 5.8; cap 2 mL). Keep
+exhaustive branch coverage in `procedure.test.ts` (sweeps 4.8–6.4).
 
 ## Procedure and print requirements
 

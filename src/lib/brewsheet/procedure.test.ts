@@ -3,13 +3,13 @@ import { expectedMashPhDisplay, PH, PH_BRANCHES, PH_INSTRUMENT, phBranch, readin
 
 describe('mash pH instructions', () => {
   it('uses the NIST buffer calibration instruction', () => {
-    expect(PH.calibrate).toBe('Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.');
+    expect(PH.instrumentStatus).toBe('Meter calibrated 2026-09-26. Do not recalibrate before brewing. Take readings through the meter display offset.');
   });
 
   it('keeps the water expectation separate from the recipe target', () => {
-    expect(expectedMashPhDisplay(PH.waterExpectedRange, PH_INSTRUMENT).label).toBe('5.40–5.55');
+    expect(expectedMashPhDisplay({ low: 5.5, high: 5.6 }, PH_INSTRUMENT).label).toBe('5.40–5.55');
     expect(PH.expected).toContain('sample cooled to 20–25 °C');
-    expect(PH.provisionalThresholds).toContain('OPEN DECISION');
+    expect(PH.provisionalThresholds).toContain('CLOSED 2026-09-26');
   });
 
   it('keeps every safety string non-empty', () => {

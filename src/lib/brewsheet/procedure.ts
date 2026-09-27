@@ -36,14 +36,12 @@ export const ACID_CAVEAT =
   "Acid doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and deliberately only partially corrected, to stay under the ~400 mg/L lactic flavour threshold. Mash pH must be measured.";
 
 export const PH = {
-  calibrate: 'Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.',
   instrumentStatus:
     'Meter calibrated 2026-09-26. Do not recalibrate before brewing. Take readings through the meter display offset.',
-  waterExpectedRange: { low: 5.5, high: 5.6, label: '5.5–5.6' },
   expected:
-    'Measure on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
+    'Measure on a sample cooled to 20–25 °C, at 15 minutes into the mash.',
   provisionalThresholds:
-    'OPEN DECISION: in-mash correction thresholds are provisional. They were derived against the old global target and must be re-derived against this recipe\'s TARGET before use.',
+    'CLOSED 2026-09-26: in-mash thresholds are derived from the per-recipe TARGET, not from the old global 5.2–5.4 target (5.5–5.6 → branches at 5.5, 5.6 and 5.8; cap 2 mL).',
   cap: 'Hard cap: 2 mL of in-mash corrections total. Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.',
 } as const;
 

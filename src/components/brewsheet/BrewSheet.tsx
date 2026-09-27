@@ -160,7 +160,7 @@ export default function BrewSheet({
   const efficiency = efficiencyFor(recipe, overrides);
   const plan = brewSheetPlanFromRecipe(recipe);
   const mashPhTarget = mashPhTargetFromRecipe(recipe);
-  const expectedMashPh = expectedMashPhDisplay(PH.waterExpectedRange);
+  const expectedMashPh = mashPhTarget ? expectedMashPhDisplay(mashPhTarget) : undefined;
   const gravity = c.gravity;
   const preBoilTarget = gravity?.predictedPreBoilGravity;
   const preBoilDisplay = plan.preBoilGravity ?? sg(preBoilTarget);
@@ -271,7 +271,7 @@ export default function BrewSheet({
               <tr><th>Target ABV</th><td>{plan.targetAbv ?? (targetAbv === undefined ? 'Unknown' : `${fmt(targetAbv)} %`)} <Est /></td></tr>
               <tr><th>IBU</th><td>{fmt(recipe.ibu, 0)}</td></tr>
               <tr><th>Mash pH TARGET</th><td>{mashPhTarget?.label ?? 'Not recorded in recipe note'}</td></tr>
-              <tr><th>Mash pH EXPECTED (meter display)</th><td>{expectedMashPh.label}</td></tr>
+              <tr><th>Mash pH EXPECTED (meter display)</th><td>{expectedMashPh?.label ?? 'Not recorded in recipe note'}</td></tr>
               <tr className="d-print-none"><th>Predicted OG</th><td>{sg(gravity?.predictedOG)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
               <tr><th>Pre-boil gravity</th><td>{preBoilDisplay}</td></tr>
             </tbody>
@@ -355,7 +355,7 @@ export default function BrewSheet({
 
       <Step n={next()} title="Day before — water and acid">
         <ul className={styles.checklist}>
-          <Check>{PH.calibrate}</Check>
+          <Check>{PH.instrumentStatus}</Check>
           <Check>Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
         </ul>
         <ReadingField id="untreatedWaterPh" />
@@ -394,9 +394,8 @@ export default function BrewSheet({
 
       <Step n={next()} title="Mash pH at 15 minutes">
         <p><strong>TARGET:</strong> {mashPhTarget?.label ?? 'Not recorded in recipe note — record the recipe-specific target before brew day.'}</p>
-        <p><strong>EXPECTED (meter display):</strong> {expectedMashPhDisplay(PH.waterExpectedRange).label}; display offset {offsetLabel()}. {PH.expected}</p>
+        <p><strong>EXPECTED (meter display):</strong> {expectedMashPh?.label ?? 'Unknown'}; display offset {offsetLabel()}. {PH.expected}</p>
         <ReadingField id="mashPh15" />
-        <p className={styles.warning} role="note"><strong>⚠ REVIEW REQUIRED</strong> {PH.provisionalThresholds}</p>
         <div className={styles.tree}>
           {PH_BRANCHES.map((b) => (
             <div key={b.id} className={styles.branch}>
@@ -472,8 +471,8 @@ export default function BrewSheet({
         )}
         <div className={styles.correction}>
           <p><strong>{COURSE_CORRECTION.intro}</strong></p>
-          <p>{COURSE_CORRECTION.formula}</p>
-          <p className={styles.small}>{COURSE_CORRECTION.example}</p>
+          <p className="d-print-none">{COURSE_CORRECTION.formula}</p>
+          <p className={`${styles.small} d-print-none`}>{COURSE_CORRECTION.example}</p>
           <p>
             = R{reading('preBoilGravity').number} points × R{reading('preBoilVolume').number} ÷ {fmt(c.postBoilVolumeL)} L <Est /> =
             <span className={styles.blankShort} /> points vs target OG {sg(recipe.og)}
