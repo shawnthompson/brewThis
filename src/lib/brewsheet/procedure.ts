@@ -4,6 +4,10 @@
 // paraphrase or template it at runtime. Edit only by hand, against the spec.
 
 export const SAFETY = {
+  acidHandling:
+    'Acid into water, never water into acid; syringe or graduated dropper only; keep it away from the sanitiser bucket and the control panel.',
+  coldTap:
+    'Run the cold tap before filling anything.',
   maltPipeLift:
     'Heaviest, most dangerous moment of the day. Roughly 2× the dry grain weight, soaked at 75 °C. Use both handles, lift with your legs, seat it square on its supports before letting go. Keep your face out of the steam — it will scald.',
   boilOver:
@@ -12,8 +16,12 @@ export const SAFETY = {
     '25 L / 35 L = 0.71, above the 0.65 threshold.',
   lacticAcid:
     "Corrosive. Eye protection. Always acid into water, never water into acid. Syringe or graduated dropper only — 'about a capful' is not a dose at 88%.",
+  probeStorage:
+    'Never store the pH probe in distilled water.',
   transfer:
     'Only splash wort that is already chilled (below ~27 °C). Splashing hot wort is hot-side aeration and gives stale cardboard flavours. Never raise the BrewZilla to gain drop height — it holds ~25 kg of hot liquid and is a scald hazard if it shifts. Lower the receiver instead.',
+  hotWortSplash:
+    'Never splash hot wort.',
   aerationLift:
     'A 32 L bucket holding 19 L weighs ~20 kg. Lift with your legs and get it onto a solid waist-height surface before shaking it.',
   fermenterLight:
@@ -29,9 +37,10 @@ export const ACID_CAVEAT =
 
 export const PH = {
   calibrate: 'Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.',
-  expectedRange: '5.5–5.6',
+  instrumentStatus:
+    'Meter calibrated 2026-09-26. Do not recalibrate before brewing. Take readings through the meter display offset.',
   expected:
-    'Expected mash pH 5.5–5.6 on this water, measured on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
+    'Measure on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
   provisionalThresholds:
     'OPEN DECISION: in-mash correction thresholds are provisional. They were derived against the old global target and must be re-derived against this recipe\'s TARGET before use.',
   cap: 'Hard cap: 2 mL of in-mash corrections total. Past that, record the reading and continue — a mash at 5.6 still makes good beer. Chasing further usually means the meter is wrong, not the mash.',
@@ -78,8 +87,6 @@ export function phBranch(ph: number): PhBranch | undefined {
 export const RULES = {
   whirlpool:
     'Whirlpool at 80 °C, 20 minutes. Above it you volatilise aroma and keep isomerising alpha acids; below ~70 °C spoilage organisms survive.',
-  hopSocks:
-    'Split whirlpool hop charges over 100 g across 2–3 loosely-filled hop socks. Pellets swell; one packed sock is a brick that neither releases aroma nor lets the pump circulate.',
   aeration:
     'Aeration: splash on transfer (free, ~2–4 ppm O₂) plus a sealed hard shake of 3–5 minutes (~8 ppm, the ceiling for any air method). Log method and duration every batch.',
   fermentationRamp:
@@ -87,7 +94,27 @@ export const RULES = {
   terminalHold:
     'Hold 2–3 days at terminal gravity before crashing or packaging. Never crash on the first flat gravity reading.',
   purgeKeg: 'Purge or pressurise the receiving keg before transfer.',
+  cleanup:
+    'Cleanup: use ~12 L water and ~168 g PBW in the BrewZilla, soak overnight, then rinse thoroughly the next day. Wash hop bags and socks immediately; spent hops sour fast. If it boiled over, hand-wash the jacket separately in warm soapy water and hang to dry.',
+  afterBrewDay:
+    'After brew day: hold 19–20 °C days 0–4; dry hop day 4 with 250 g in 4 bags (~62 g each) for 3-day contact, open briefly and do not stir; from ~day 5 allow +2 °C to 21–22 °C; hold 2–3 days at terminal gravity before crashing or packaging — never crash on the first flat reading; cold crash 0–3 °C for 2–5 days if keezer space allows; FG on the Tilt, never the refractometer; purge or pressurise the receiving keg before transfer; carbonate 2.4 volumes (= 10 PSI at 3 °C); expect 15.5–17 L packaged.',
+  whirlpoolContainment: 'Whirlpool 200 g Citra in 4 fine-mesh drawstring bags, ~50 g each.',
+  dryHopContainment: 'Dry hop 250 g Citra in 4 bags, ~62 g each; 3-day contact, open briefly and do not stir.',
 } as const;
+
+export const PH_INSTRUMENT = {
+  id: '2025-all-new-ph-meter',
+  label: '2025 All-New pH Meter',
+  displayOffsetLow: -0.10,
+  displayOffsetHigh: -0.05,
+  measuredDate: '2026-09-26',
+} as const;
+
+export function expectedMashPhDisplay(target: { low: number; high: number }, instrument = PH_INSTRUMENT) {
+  const low = target.low + instrument.displayOffsetLow;
+  const high = target.high + instrument.displayOffsetHigh;
+  return { low, high, label: `${low.toFixed(2)}–${high.toFixed(2)}` };
+}
 
 export const SANITISE_DURING_MASH =
   'Mix StarSan (2 tbsp (30 mL) per 19 L). Sanitise fermenter, lid, temp probe, Tilt, auto-siphon and hose, dry-hop bag, sample jar.';
@@ -98,10 +125,10 @@ export const HOP_SOCK_THRESHOLD_G = 100;
 
 export const COURSE_CORRECTION = {
   intro: 'Course correction. Work in gravity points (the digits after 1.0):',
-  formula: 'expected OG points ≈ pre-boil points × pre-boil volume ÷ post-boil volume',
+  formula: 'expected kettle points ≈ R9 points × R8 litres ÷ post-boil litres; ÷ 0.96 for cooling shrinkage → OG',
   example: 'Example: 1.056 at 24 L boiling down to 21 L → 56 × 24 ÷ 21 = 64 → OG 1.064',
   onTarget: 'On target → proceed.',
-  low: 'Significantly low → extend the boil 15–20 min to concentrate, or accept lower ABV. Do NOT add sugar.',
+  low: 'Low → extend the boil 15–20 min or accept the lower ABV. ⚠ Do not add sugar — it thins the body and gives a cidery edge, which is the fault under investigation.',
   high: 'High → top up with hot water.',
 } as const;
 

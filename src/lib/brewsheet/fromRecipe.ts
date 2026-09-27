@@ -38,7 +38,6 @@ export interface BrewSheetPlan {
   preBoilGravity?: string;
   spargeAcidMl?: number;
   packaging?: string;
-  process?: string;
 }
 
 export type EfficiencySource = 'override' | 'brewfather' | 'default';
@@ -146,7 +145,6 @@ function noteNumber(notes: string | undefined, label: string): number | undefine
 }
 
 export function brewSheetPlanFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>): BrewSheetPlan {
-  const process = noteLine(recipe.notes, 'Process')?.split(':').slice(1).join(':').trim();
   return {
     brewDate: noteLine(recipe.notes, 'Brew date')?.split(':').slice(1).join(':').trim(),
     fgUnknown: /^unknown/i.test(noteLine(recipe.notes, 'FG')?.split(':').slice(1).join(':').trim() ?? ''),
@@ -159,7 +157,6 @@ export function brewSheetPlanFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>)
     preBoilGravity: noteLine(recipe.notes, 'Pre-boil gravity')?.split(':').slice(1).join(':').trim(),
     spargeAcidMl: noteNumber(recipe.notes, 'Sparge acid'),
     packaging: recipe.notes?.match(/Packaging:\s*([^\n]+)/i)?.[1]?.trim(),
-    process,
   };
 }
 

@@ -5,11 +5,8 @@ import {
   calculateBrewSheet,
   DEFAULT_EQUIPMENT,
   DEFAULT_MASH_THICKNESS_L_PER_KG,
-  FALLBACK_POTENTIAL,
-  predictGravity,
 } from '@/lib/brewsheet/calculations';
 import {
-  brewfatherEfficiency,
   brewSheetPlanFromRecipe,
   efficiencyFor,
   hopsByUse,
@@ -19,12 +16,12 @@ import {
   type BrewSheetOverrides,
 } from '@/lib/brewsheet/fromRecipe';
 import {
-  ACID_CAVEAT,
   COURSE_CORRECTION,
   EFFICIENCY_CHECK_NOTE,
-  HOP_SOCK_THRESHOLD_G,
   PH,
+  PH_INSTRUMENT,
   PH_BRANCHES,
+  expectedMashPhDisplay,
   reading,
   READINGS,
   RULES,
@@ -105,6 +102,16 @@ function hopLine(h: BrewfatherHop) {
   return `${fmt(h.amount, 0)} g ${h.name?.trim() || 'Unnamed hop'}${h.alpha ? ` (${fmt(h.alpha)}% AA)` : ''}`;
 }
 
+function miscLine(m: { name?: string; amount?: number; unit?: string; time?: number }) {
+  const amount = fmt(m.amount, /Whirlfloc/i.test(m.name ?? '') ? 0 : 1);
+  const unit = /Whirlfloc/i.test(m.name ?? '') ? 'tablet' : m.unit ?? '';
+  return `${m.time ?? '—'} min: ${amount} ${unit} ${m.name ?? 'Unnamed addition'}`;
+}
+
+function offsetLabel() {
+  return `${PH_INSTRUMENT.displayOffsetLow.toFixed(2)} to ${PH_INSTRUMENT.displayOffsetHigh.toFixed(2)} pH`;
+}
+
 export default function BrewSheet({
   recipe,
   overrides,
@@ -128,8 +135,8 @@ export default function BrewSheet({
   const grist = mashedFermentables(recipe);
   const hops = hopsByUse(recipe);
   const miscs = recipe.miscs ?? [];
-  const mashSalts = miscs.filter((m) => /mash/i.test(m.use ?? ''));
-  const spargeSalts = miscs.filter((m) => /sparge/i.test(m.use ?? ''));
+  const mashSalts = miscs.filter((m) => /mash/i.test(m.use ?? '') && !/lactic/i.test(m.name ?? ''));
+  const spargeSalts = miscs.filter((m) => /sparge/i.test(m.use ?? '') && !/lactic/i.test(m.name ?? ''));
   const boilMiscs = miscs.filter((m) => /boil/i.test(m.use ?? ''));
   const mashSteps = recipe.mash?.steps ?? [];
   const fermSteps = recipe.fermentation?.steps ?? [];
@@ -138,33 +145,25 @@ export default function BrewSheet({
   const efficiency = efficiencyFor(recipe, overrides);
   const plan = brewSheetPlanFromRecipe(recipe);
   const mashPhTarget = mashPhTargetFromRecipe(recipe);
+  const expectedMashPh = mashPhTarget ? expectedMashPhDisplay(mashPhTarget) : undefined;
   const gravity = c.gravity;
   const preBoilTarget = gravity?.predictedPreBoilGravity;
+  const preBoilDisplay = plan.preBoilGravity ?? sg(preBoilTarget);
   const mashInTempC = input.mashInTempC ?? input.mashTempC;
 
   // Efficiency diagnostic at R9: the spec's assumed 76%, Brewfather's figure,
   // and any override, each as a predicted pre-boil gravity and OG.
-  const efficiencyCases = [
-    { efficiencyPct: DEFAULT_EQUIPMENT.efficiencyPct, label: 'spec assumption' },
-    { efficiencyPct: brewfatherEfficiency(recipe), label: 'Brewfather profile' },
-    { efficiencyPct: overrides.efficiencyPct, label: 'override' },
-  ]
-    .filter((e): e is { efficiencyPct: number; label: string } => e.efficiencyPct !== undefined)
-    .filter((e, i, all) => all.findIndex((x) => x.efficiencyPct === e.efficiencyPct) === i)
-    .map((e) => ({
-      ...e,
-      ...predictGravity(input.fermentables ?? [], e.efficiencyPct, {
-        batchSizeL: input.batchSizeL,
-        preBoilVolumeL: c.preBoilVolumeL,
-        postBoilVolumeL: c.postBoilVolumeL,
-      }),
-    }));
-  const holdsTargetOG = (og: number) =>
-    recipe.og !== undefined && Math.abs(og - recipe.og) <= 0.002;
-
   const targetAbv =
     !plan.fgUnknown && recipe.og !== undefined && recipe.fg != null ? abv(recipe.og, recipe.fg) : undefined;
   const spargeAcidMl = plan.spargeAcidMl ?? c.spargeAcidMl;
+  const spargePrepareL = plan.spargePrepareL ?? c.spargeWaterL;
+  const packagingSteps = plan.packaging
+    ? plan.packaging
+        .split(';')
+        .map((step) => step.trim())
+        .filter(Boolean)
+        .map((step) => `${step.charAt(0).toUpperCase()}${step.slice(1)}`)
+    : [RULES.purgeKeg, 'Carbonate 2.4 volumes (= 10 PSI at 3 °C)'];
 
   let n = 0;
   const next = () => ++n;
@@ -229,12 +228,13 @@ export default function BrewSheet({
               <tr><th>Target ABV</th><td>{plan.targetAbv ?? (targetAbv === undefined ? 'Unknown' : `${fmt(targetAbv)} %`)} <Est /></td></tr>
               <tr><th>IBU</th><td>{fmt(recipe.ibu, 0)}</td></tr>
               <tr><th>Mash pH TARGET</th><td>{mashPhTarget?.label ?? 'Not recorded in recipe note'}</td></tr>
-              <tr><th>Mash pH EXPECTED</th><td>{PH.expectedRange} on this water</td></tr>
-              <tr><th>Predicted OG</th><td>{sg(gravity?.predictedOG)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
-              <tr><th>Pre-boil gravity</th><td>{sg(preBoilTarget)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
+              <tr><th>Mash pH EXPECTED (meter display)</th><td>{expectedMashPh?.label ?? 'Unknown'}</td></tr>
+              <tr className="d-print-none"><th>Predicted OG</th><td>{sg(gravity?.predictedOG)} <Est /> at {fmt(efficiency.efficiencyPct)}%</td></tr>
+              <tr><th>Pre-boil gravity</th><td>{preBoilDisplay}</td></tr>
             </tbody>
           </table>
-          <p className={styles.small}>
+          <p className={styles.small}>pH instrument: {PH_INSTRUMENT.label}; display offset {offsetLabel()} measured {PH_INSTRUMENT.measuredDate}.</p>
+          <p className={`${styles.small} d-print-none`}>
             Assumptions: boil-off {fmt(eq.boilOffRateLPerHour)} L/h <Est />,
             efficiency {fmt(efficiency.efficiencyPct)}% ({{ override: 'override', brewfather: 'Brewfather profile', default: 'spec default' }[efficiency.source]}) <Est />,
             grain absorption {fmt(eq.grainAbsorptionLPerKg)} L/kg, hop absorption {fmt(eq.hopAbsorptionMlPerG)} mL/g,
@@ -255,7 +255,6 @@ export default function BrewSheet({
               <tr><th>Lactic acid 88%</th><td>strike <strong>{fmt(c.strikeAcidMl)} mL</strong> · sparge <strong>{fmt(spargeAcidMl)} mL</strong> {!plan.spargeAcidMl && <Est />}</td></tr>
             </tbody>
           </table>
-          <p className={styles.small}>{ACID_CAVEAT}</p>
         </section>
       </div>
 
@@ -294,31 +293,43 @@ export default function BrewSheet({
           {READINGS.map((r) => (
             <li key={r.id}>
               <ReadingField id={r.id} />
-              {r.id === 'fg' && <p className={styles.fgWarn}>⚠ {SAFETY.fgInstrument}</p>}
             </li>
           ))}
         </ol>
       </section>
 
-      <h2 className={styles.procedureTitle}>Procedure</h2>
+      <section className={styles.timeline}>
+        <h2>Timeline</h2>
+        <ol>
+          <li>Pitch at {fermSteps[0]?.stepTemp ?? '19–20'} °C; hold days 0–4.</li>
+          <li>Dry hop day {hops.dryHop[0]?.day ?? 4}; contact for {hops.dryHop[0]?.time ?? 3} days.</li>
+          <li>From ~day 5, allow the fermentation temperature to rise by 2 °C.</li>
+          <li>Hold 2–3 days at terminal gravity before crashing or packaging.</li>
+        </ol>
+      </section>
+
+      <div className={styles.phase}><h2>Day before</h2></div>
 
       <Step n={next()} title="Day before — water and acid">
         <ul className={styles.checklist}>
-          <Check>{PH.calibrate}</Check>
-          <Check>Collect strike water {fmt(c.strikeWaterL)} L and sparge water {fmt(c.spargeWaterL)} L <Est />.</Check>
+          <Check>{PH.instrumentStatus}</Check>
+          <Check>Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
         </ul>
         <ReadingField id="untreatedWaterPh" />
+        <Warning>{SAFETY.coldTap}</Warning>
+        <Warning>{SAFETY.probeStorage}</Warning>
         <Warning>{SAFETY.lacticAcid}</Warning>
         <ul className={styles.checklist}>
-          {mashSalts.length > 0 && <Check>Add strike salts: {mashSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
-          {spargeSalts.length > 0 && <Check>Add sparge salts: {spargeSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
+          {mashSalts.length > 0 && <Check>Add strike water-treatment additions: {mashSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
+          {spargeSalts.length > 0 && <Check>Add sparge water-treatment additions: {spargeSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
           <Check>Strike water: <strong>{fmt(c.strikeAcidMl)} mL</strong> lactic acid 88% ({input.hasCrystalOrRoast ? 'grist has crystal/roast' : 'pale grist, no crystal/roast'}).</Check>
           <Check>Sparge water: <strong>{fmt(spargeAcidMl)} mL</strong> lactic acid 88% {!plan.spargeAcidMl && <Est />}.</Check>
         </ul>
-        <p className={styles.small}>{ACID_CAVEAT}</p>
         <ReadingField id="strikeWaterPh" />
         <ReadingField id="spargeWaterPh" />
       </Step>
+
+      <div className={styles.phase}><h2>Mash</h2></div>
 
       <Step n={next()} title="Heat strike water and mash in">
         <ul className={styles.checklist}>
@@ -339,11 +350,9 @@ export default function BrewSheet({
       </Step>
 
       <Step n={next()} title="Mash pH at 15 minutes">
-        <p className={styles.small}><strong>{PH.calibrate}</strong></p>
         <p><strong>TARGET:</strong> {mashPhTarget?.label ?? 'Not recorded in recipe note — record the recipe-specific target before brew day.'}</p>
-        <p><strong>EXPECTED:</strong> {PH.expectedRange} on this water. {PH.expected}</p>
+        <p><strong>EXPECTED (meter display):</strong> {expectedMashPh?.label ?? 'Unknown'}; display offset {offsetLabel()}. {PH.expected}</p>
         <ReadingField id="mashPh15" />
-        <p className={styles.warning} role="note"><strong>⚠ REVIEW REQUIRED</strong> {PH.provisionalThresholds}</p>
         <div className={styles.tree}>
           {PH_BRANCHES.map((b) => (
             <div key={b.id} className={styles.branch}>
@@ -367,10 +376,12 @@ export default function BrewSheet({
         </ul>
       </Step>
 
+      <div className={styles.phase}><h2>Mash-out, lauter &amp; sparge</h2></div>
+
       <Step n={next()} title="Sparge water, mash out, lift malt pipe, sparge">
         <ul className={styles.checklist}>
           <Check>
-            Prepare {fmt(plan.spargePrepareL ?? c.spargeWaterL)} L <Est />
+            Prepare {fmt(spargePrepareL)} L
             {plan.spargeMarkL !== undefined && <>; pour to the {fmt(plan.spargeMarkL)} L mark — the mark governs, not the litre count</>}
             {spargeTempC !== undefined && <> to {fmt(spargeTempC)} °C</>}.
           </Check>
@@ -379,40 +390,26 @@ export default function BrewSheet({
         <Warning>{SAFETY.maltPipeLift}</Warning>
         <ul className={styles.checklist}>
           <Check>Lift and seat the malt pipe on its supports.</Check>
-          <Check>Sparge slowly with {fmt(c.spargeWaterL)} L <Est />; let it drain fully.</Check>
+          <Check>Sparge slowly with the prepared water{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}; let it drain fully.</Check>
           {hops.firstWort.map((h, i) => <Check key={i}>First wort hop: {hopLine(h)}</Check>)}
         </ul>
       </Step>
 
+      <div className={styles.phase}><h2>Boil</h2></div>
+
       <Step n={next()} title="Pre-boil check — the last point a bad number can be fixed">
         <ReadingField id="preBoilVolume" hint={<>target {fmt(c.preBoilVolumeL)} L <Est /></>} />
-        <ReadingField id="preBoilGravity" hint={<>target {plan.preBoilGravity ?? sg(preBoilTarget)} <Est /> at {fmt(efficiency.efficiencyPct)}%</>} />
+        <ReadingField id="preBoilGravity" hint={<>target {preBoilDisplay}</>} />
         <ReadingField id="preBoilDeadspace" />
-        {efficiencyCases.length > 0 && (
-          <div className={styles.effCheck}>
-            <p><strong>Efficiency check</strong> — compare R{reading('preBoilGravity').number}:</p>
-            <table className={styles.effTable}>
-              <tbody>
-                {efficiencyCases.map((e) => (
-                  <tr key={e.efficiencyPct}>
-                    <td>If ~<strong>{sg(e.predictedPreBoilGravity)}</strong> <Est /></td>
-                    <td>→ {fmt(e.efficiencyPct)}% efficiency ({e.label})</td>
-                    <td>
-                      OG will land near <strong>{sg(e.predictedOG)}</strong> <Est />
-                      {holdsTargetOG(e.predictedOG) && <>, target OG holds</>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {gravity?.potentialEstimated && (
-              <p className={styles.small}>
-                <Est /> Some fermentables have no potential in Brewfather; {FALLBACK_POTENTIAL} assumed.
-              </p>
-            )}
-            <p><strong>{EFFICIENCY_CHECK_NOTE}</strong></p>
-          </div>
-        )}
+        <div className={styles.effCheck}>
+          <p><strong>Efficiency check — compare R{reading('preBoilGravity').number} ({preBoilDisplay}).</strong></p>
+          <ul className={styles.checklist}>
+            <Check>Lands ~1.054 → 76% is real, target OG holds; carry on.</Check>
+            <Check>1.046 or below → this system does not deliver 76%. Record it: part of the long-running ABV shortfall was targets set from an efficiency this brewery does not achieve.</Check>
+            <Check>Anywhere between → record it; the true figure is whatever you measured.</Check>
+          </ul>
+          <p><strong>{EFFICIENCY_CHECK_NOTE}</strong></p>
+        </div>
         <div className={styles.correction}>
           <p><strong>{COURSE_CORRECTION.intro}</strong></p>
           <p>{COURSE_CORRECTION.formula}</p>
@@ -430,24 +427,25 @@ export default function BrewSheet({
       </Step>
 
       <Step n={next()} title={`Boil — ${input.boilMinutes} min`}>
-        {c.boilOverRisk && <>
-          <Warning>{SAFETY.boilOver}</Warning>
-          <Warning>{SAFETY.boilOverRatio}</Warning>
+        <Warning>{SAFETY.boilOver}</Warning>
+        <Warning>{SAFETY.boilOverRatio}</Warning>
           <Warning>{SAFETY.vesselLimit}</Warning>
-        </>}
-        <ul className={styles.checklist}>
-          {hops.boil.map((h, i) => (
-            <Check key={`h${i}`}>{h.time} min: {hopLine(h)}</Check>
-          ))}
-          {boilMiscs.map((m, i) => (
-            <Check key={`m${i}`}>{m.time ?? '—'} min: {fmt(m.amount, 1)} {m.unit} {m.name}</Check>
-          ))}
-        </ul>
+          <ul className={styles.checklist}>
+            {hops.boil.map((h, i) => (
+              <Check key={`h${i}`}>
+                {h.time} min: {hopLine(h)}
+                {/Cascade/i.test(h.name ?? '') && <> in 2 coarse socks, ~25 g each.</>}
+              </Check>
+            ))}
+            {boilMiscs.map((m, i) => <Check key={`m${i}`}>{miscLine(m)}</Check>)}
+          </ul>
       </Step>
+
+      <div className={styles.phase}><h2>Whirlpool</h2></div>
 
       <Step n={next()} title={`Whirlpool — ${WHIRLPOOL_TEMP_C} °C, ${WHIRLPOOL_MINUTES} min`}>
         <Rule>{RULES.whirlpool}</Rule>
-        {input.whirlpoolHopG > HOP_SOCK_THRESHOLD_G && <Rule>{RULES.hopSocks}</Rule>}
+        <Rule>{RULES.whirlpoolContainment}</Rule>
         <ul className={styles.checklist}>
           <Check>Element off. Chill to {WHIRLPOOL_TEMP_C} °C.</Check>
           {hops.whirlpool.length === 0 && <li className={styles.small}>No whirlpool hops in this recipe.</li>}
@@ -457,8 +455,11 @@ export default function BrewSheet({
         <ReadingField id="whirlpoolDuration" hint={<>target {WHIRLPOOL_MINUTES} min</>} />
       </Step>
 
+      <div className={styles.phase}><h2>Chill, transfer, aerate &amp; pitch</h2></div>
+
       <Step n={next()} title="Chill and transfer">
         <Warning>{SAFETY.transfer}</Warning>
+        <Warning>{SAFETY.hotWortSplash}</Warning>
         <ul className={styles.checklist}>
           <Check>Chill to pitch temperature{fermSteps[0]?.stepTemp !== undefined && <> ({fmt(fermSteps[0].stepTemp)} °C)</>}.</Check>
           <Check>Transfer to the sanitised fermenter (sanitised during the mash), sitting below the tap.</Check>
@@ -492,7 +493,7 @@ export default function BrewSheet({
             </ul>
           </>
         )}
-        {plan.process && <p className={styles.small}><strong>Recipe process plan:</strong> {plan.process}</p>}
+        <Rule>{RULES.dryHopContainment}</Rule>
       </Step>
 
       <Step n={next()} title="Finish and package">
@@ -506,8 +507,26 @@ export default function BrewSheet({
           <span className={styles.unit}>%</span>
         </div>
         <ul className={styles.checklist}>
-          <Check>{RULES.purgeKeg}</Check>
-          {plan.packaging && <Check>{plan.packaging}</Check>}
+          <Check>{plan.packaging ?? RULES.purgeKeg}</Check>
+        </ul>
+      </Step>
+
+      <div className={styles.phase}><h2>Cleanup</h2></div>
+      <Step n={next()} title="Cleanup">
+        <p>{RULES.cleanup}</p>
+      </Step>
+
+      <div className={styles.phase}><h2>After brew day</h2></div>
+      <Step n={next()} title="After brew day">
+        <ul className={styles.checklist}>
+          <Check>Hold {fermSteps[0]?.stepTemp ?? '19–20'} °C days 0–4.</Check>
+          <Check>Dry hop day {hops.dryHop[0]?.day ?? 4}: {fmt(sumAmount(hops.dryHop), 0)} g {hops.dryHop[0]?.name ?? 'Citra'}; 3-day contact.</Check>
+          <Check>From ~day 5, allow +2 °C to 21–22 °C.</Check>
+          <Check>Hold 2–3 days at terminal gravity before crashing or packaging.</Check>
+          <Check>Confirm gravity is stable over 48 h.</Check>
+          <Check>Cold crash 0–3 °C for 2–5 days if there is space.</Check>
+          <Check>Take FG on the Tilt.</Check>
+          {packagingSteps.map((step) => <Check key={step}>{step.endsWith('.') ? step : `${step}.`}</Check>)}
         </ul>
       </Step>
 
