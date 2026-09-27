@@ -32,6 +32,12 @@ export const SAFETY = {
     'FG must be taken on a hydrometer or Tilt, never a refractometer. Refractometers read falsely high once alcohol is present, which invents an ABV shortfall that is not real.',
 } as const;
 
+export const RAPT_SAFETY = {
+  energisesDevice: 'Sending a profile energises the device. Stay at the kettle during heating and boil-over watch.',
+  noHeating: 'No-heating steps use an ambient target deliberately; they are not an instruction to leave the vessel unattended.',
+  boilOverWatch: SAFETY.boilOver,
+} as const;
+
 export const ACID_CAVEAT =
   "Acid doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and deliberately only partially corrected, to stay under the ~400 mg/L lactic flavour threshold. Mash pH must be measured.";
 

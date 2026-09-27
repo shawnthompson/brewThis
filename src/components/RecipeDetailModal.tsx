@@ -579,6 +579,10 @@ const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <i className="fas fa-clipboard-list me-2"></i>
                 Brew Sheet
               </a>
+              <a href={`/recipes/${recipe._id}/rapt-profile`} className="btn btn-outline-primary ms-2">
+                <i className="fas fa-temperature-half me-2"></i>
+                RAPT profile
+              </a>
               <button
                 type="button" 
                 className="btn btn-outline-primary"

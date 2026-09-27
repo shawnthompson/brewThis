@@ -89,6 +89,15 @@ reconciled with the 2026-09-24 correction (4% cooling shrinkage + 50 g Cascade a
 Hop containment is computed from the recipe's hops (`hopContainment()`), never hardcoded.
 Do not add a second mechanism.
 
+## RAPT profile export
+
+The RAPT output is a paste-ready document only. It must not contain RAPT credentials,
+API calls, profile uploads, device control, telemetry or webhooks. Manual intervention
+points remain manual; no-heating stages use an explicitly labelled ambient target.
+The full profile and a conservative merged <=6-stage handoff are both emitted. The
+six-stage cap, timer-start semantics, minimum accepted target, and portal import/export
+format remain unverified until checked in the portal.
+
 ## Mash pH
 
 The pH meter is calibrated as of 2026-09-26. **Do not recalibrate before brew day.**
