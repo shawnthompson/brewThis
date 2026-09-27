@@ -34,7 +34,7 @@ export const SAFETY = {
 
 export const RAPT_SAFETY = {
   energisesDevice: 'Sending a profile energises the device. Stay at the kettle during heating and boil-over watch.',
-  noHeating: 'Never let this step run on a low kettle — 1500 W into a shallow volume of sugary first runnings is how elements scorch. For sparging, the kettle must already be holding the first runnings (~13–14 L).',
+  liveSetpointWarning: 'Never let this step run on a low kettle — 1500 W into a shallow volume of sugary first runnings is how elements scorch. For sparging, the kettle must already be holding the first runnings (~13–14 L).',
   boilImminent: 'Boil imminent — boil-over watch; press when rolling.',
   boilOverWatch: SAFETY.boilOver,
 } as const;

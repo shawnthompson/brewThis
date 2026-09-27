@@ -12,7 +12,11 @@ function citraProfile(mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp:
     recipeName: 'Citra IPA',
     mashSteps,
     boilHops: [{ name: 'Cascade', amount: 50, time: 60, use: 'Boil' }],
-    miscAdditions: [{ name: 'Servomyces + Whirlfloc', amount: 0.5, unit: 'tsp', time: 15, use: 'Boil' }],
+    miscAdditions: [
+      { name: 'Servomyces', amount: 1, unit: 'capsule', time: 15, use: 'Boil' },
+      // Deliberately outside the 20–25 L reference range for this 19 L batch.
+      { name: 'Whirlfloc', amount: 1, unit: 'tablet', time: 15, use: 'Boil' },
+    ],
     whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, use: 'Whirlpool' }],
     preBoilGravityTarget: '~1.054 at 25 L',
   });
@@ -63,6 +67,8 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(profile.steps[7].alerts).toContainEqual(expect.objectContaining({ when: 'elapsed', elapsedMinutes: 45 }));
     expect(alerts).toContain('Servomyces');
     expect(alerts).toContain('FLAG');
+    expect(alerts).toContain('Whirlfloc');
+    expect(alerts).not.toContain('Servomyces — FLAG');
     expect(alerts).toContain('~1.054 at 25 L');
     expect(alerts).toContain('refractometer');
   });
@@ -77,18 +83,20 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(copied).toContain('°C');
   });
 
-  it('gives every step a live-setpoint dry-fire warning', () => {
-    expect(profile.steps.every((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.noHeating))).toBe(true);
+  it('keeps the live-setpoint warning on the kettle-risk steps', () => {
+    const warned = profile.steps.filter((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.liveSetpointWarning));
+    expect(warned.map((step) => step.name)).toEqual(['Sparging', 'Boil heat', 'Boil', 'Whirlpool']);
   });
 
-  it('renders the live-setpoint warning for every generated step', () => {
+  it('renders the live-setpoint warning once at the top and on kettle-risk steps', () => {
     const copied = renderRaptProfile(profile);
-    expect(copied.split(RAPT_SAFETY.noHeating).length - 1).toBe(profile.steps.length + 1);
+    expect(copied.split(RAPT_SAFETY.liveSetpointWarning).length - 1).toBe(5);
   });
 
-  it('does not create an alert-only or merged stage', () => {
+  it('keeps the boil as the only intentionally split pair', () => {
     expect(profile.steps.every((step) => step.name.length > 0 && Number.isFinite(step.targetC))).toBe(true);
-    expect('mergedSteps' in profile).toBe(false);
+    expect(profile.steps.filter((step) => step.targetC === 105).map((step) => step.name)).toEqual(['Boil heat', 'Boil']);
+    expect(profile.steps.filter((step) => step.name === 'Boil heat' || step.name === 'Boil')).toHaveLength(2);
   });
 });
 
