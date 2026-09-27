@@ -1,5 +1,5 @@
 import type { BrewfatherHop, BrewfatherMashStep } from '@/types';
-import { calculateBrewSheet, type BrewSheetInput } from '@/lib/brewsheet/calculations';
+import { calculateBrewSheet, round, type BrewSheetInput } from '@/lib/brewsheet/calculations';
 import { RAPT_REFERENCE_FLAGS, RAPT_SAFETY, WHIRLPOOL_MINUTES } from '@/lib/brewsheet/procedure';
 
 export type RaptStepType = 'heat' | 'ramp';
@@ -56,7 +56,7 @@ export const RAPT_END_LABELS = {
   manual: 'I press a button on the device',
 } as const;
 
-const fmt = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(1);
+const fmt = (value: number) => String(value);
 const names = (items: { name?: string }[]) => [...new Set(items.map((x) => x.name?.trim()).filter(Boolean))].join(', ');
 const amount = (value: number | undefined, unit = 'g') => value === undefined ? '' : `${fmt(value)} ${unit} `;
 
@@ -93,12 +93,20 @@ function stepMinutes(step: BrewfatherMashStep): number | undefined {
 function mashSteps(input: BrewSheetInput, schedule: RaptScheduleInput, strikeTempC: number): RaptStep[] {
   const configured = schedule.mashSteps ?? [];
   const steps: RaptStep[] = [{
-    name: `Heat strike liquor — ${fmt(strikeTempC)} °C, then dough in`,
+    name: 'Heat strike water',
     type: 'heat',
     targetC: strikeTempC,
     endCondition: 'manual',
-    alerts: [holdWarning(), { when: 'stepStart', message: 'Manual point: confirm dough-in and press the device button after the grain is mixed in.' }],
+    alerts: [holdWarning()],
   }];
+
+  steps.push({
+    name: 'Add grains',
+    type: 'heat',
+    targetC: input.mashTempC,
+    endCondition: 'manual',
+    alerts: [holdWarning(), { when: 'stepStart', message: 'Manual point: add and mix the grain, then press the device button.' }],
+  });
 
   const rests = configured.length > 0 ? configured : [{ stepTemp: input.mashTempC, stepTime: 60 }];
   for (const rest of rests) {
@@ -106,18 +114,9 @@ function mashSteps(input: BrewSheetInput, schedule: RaptScheduleInput, strikeTem
     const durationMinutes = stepMinutes(rest);
     if (targetC === undefined || durationMinutes === undefined) continue;
     if (targetC >= 75) {
-      // The climb and hold are separate because the portal timer's start event
-      // is not allowed to stand in for reaching the mash-out temperature.
-      steps.push({
-        name: `Mash-out climb — ${fmt(targetC)} °C`,
-        type: 'ramp',
-        targetC,
-        endCondition: 'targetReached',
-        alerts: [holdWarning()],
-      });
-      steps.push(timedStep(`Mash-out hold — ${fmt(targetC)} °C`, targetC, durationMinutes));
+      steps.push(timedStep('Mash out', targetC, durationMinutes));
     } else {
-      steps.push(timedStep(`Mash rest — ${fmt(targetC)} °C`, targetC, durationMinutes));
+      steps.push(timedStep('Mash rest', targetC, durationMinutes));
     }
   }
   return steps;
@@ -152,6 +151,7 @@ export function raptAlertTriggerLabel(alert: RaptAlert): string {
 
 export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleInput): RaptProfile {
   const calculated = calculateBrewSheet(input);
+  const strikeTempC = round(calculated.strikeTempC, 1);
   const boilStart = boilHopLabel(schedule.boilHops, input.boilMinutes);
   const boilMisc = miscLabelAt(schedule.miscAdditions, 15);
   const whirlpoolNames = names(schedule.whirlpoolHops ?? []);
@@ -161,15 +161,15 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
     ?? 'Target not supplied by recipe — add a target before brew day.';
 
   const steps: RaptStep[] = [
-    ...mashSteps(input, schedule, calculated.strikeTempC),
+    ...mashSteps(input, schedule, strikeTempC),
     {
-      name: 'Sparging — hold 80 °C',
+      name: 'Sparging',
       type: 'heat', targetC: 80, endCondition: 'manual', alerts: [holdWarning(), {
         when: 'stepStart', message: 'Manual point: sparge with the kettle holding the first runnings; do not run this step on a low kettle.',
       }],
     },
     {
-      name: 'Check gravity (pre-boil) — hold 80 °C',
+      name: 'Check gravity (pre-boil)',
       type: 'heat', targetC: 80, endCondition: 'manual', alerts: [holdWarning(), {
         when: 'stepStart', message: `Manual point: check approximately ${gravityTarget} with a refractometer and record the reading.`,
       }],
@@ -177,25 +177,25 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
     {
       // This split is driven by the unreachable 105 °C setpoint and timer
       // semantics, not by the placement of an alert.
-      name: 'Boil — heat to boil',
+      name: 'Boil heat',
       type: 'heat', targetC: 105, endCondition: 'manual', alerts: [holdWarning(), {
         when: 'temperatureReached', temperatureC: 98, message: `${RAPT_SAFETY.boilImminent} ${RAPT_SAFETY.boilOverWatch}`,
       }],
     },
     {
-      name: 'Boil — 60 min',
+      name: 'Boil',
       type: 'heat', targetC: 105, endCondition: 'timer', timerStart: 'onStepStart', durationMinutes: input.boilMinutes,
       alerts: [holdWarning(), {
         when: 'stepStart', message: boilStart ? `Add ${boilStart}.` : 'Follow the recipe boil additions at step start.',
       }, ...(boilMisc ? [{ when: 'elapsed' as const, elapsedMinutes: 45, message: `Add ${boilMisc}.` }] : [])],
     },
     {
-      name: `Whirlpool — ${fmt(whirlpoolMinutes)} min at 80 °C`,
+      name: 'Whirlpool',
       type: 'heat', targetC: 80, endCondition: 'timer', timerStart: 'onStepStart', durationMinutes: whirlpoolMinutes,
       alerts: [holdWarning(), { when: 'stepStart', message: whirlpoolNames ? `Add ${whirlpoolNames} and start the whirlpool.` : 'Start the whirlpool according to the recipe.' }],
     },
     {
-      name: 'Flameout and chill — hold 80 °C until manual action',
+      name: 'Flameout and chill',
       type: 'heat', targetC: 80, endCondition: 'manual', alerts: [holdWarning(), {
         when: 'stepStart', message: 'Manual point: flameout, pull the hop sock, and begin chilling.',
       }],

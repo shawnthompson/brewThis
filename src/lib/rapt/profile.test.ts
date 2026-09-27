@@ -23,22 +23,27 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
 
   it('uses calculated strike liquor temperature and the corrected physical sequence', () => {
     expect(profile.steps.map((step) => step.name)).toEqual([
-      'Heat strike liquor — 72.2 °C, then dough in',
-      'Mash rest — 66.7 °C',
-      'Mash-out climb — 75 °C',
-      'Mash-out hold — 75 °C',
-      'Sparging — hold 80 °C',
-      'Check gravity (pre-boil) — hold 80 °C',
-      'Boil — heat to boil',
-      'Boil — 60 min',
-      'Whirlpool — 20 min at 80 °C',
-      'Flameout and chill — hold 80 °C until manual action',
+      'Heat strike water',
+      'Add grains',
+      'Mash rest',
+      'Mash out',
+      'Sparging',
+      'Check gravity (pre-boil)',
+      'Boil heat',
+      'Boil',
+      'Whirlpool',
+      'Flameout and chill',
+    ]);
+    expect(profile.steps.map((step) => step.targetC)).toEqual([72.2, 66.7, 66.7, 75, 80, 80, 105, 105, 80, 80]);
+    expect(profile.steps.map((step) => step.endCondition)).toEqual([
+      'manual', 'manual', 'timer', 'timer', 'manual', 'manual', 'manual', 'timer', 'timer', 'manual',
     ]);
   });
 
   it('uses explicit timer starts and keeps unreachable timers on step start', () => {
     const timers = profile.steps.filter((step) => step.endCondition === 'timer');
     expect(timers.every((step) => step.timerStart !== undefined)).toBe(true);
+    expect(profile.steps[3]).toMatchObject({ targetC: 75, durationMinutes: 10, timerStart: 'onTargetReached' });
     expect(profile.steps[7]).toMatchObject({ targetC: 105, timerStart: 'onStepStart', durationMinutes: 60 });
     expect(profile.steps[8]).toMatchObject({ targetC: 80, timerStart: 'onStepStart', durationMinutes: 20 });
   });
@@ -76,6 +81,11 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(profile.steps.every((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.noHeating))).toBe(true);
   });
 
+  it('renders the live-setpoint warning for every generated step', () => {
+    const copied = renderRaptProfile(profile);
+    expect(copied.split(RAPT_SAFETY.noHeating).length - 1).toBe(profile.steps.length + 1);
+  });
+
   it('does not create an alert-only or merged stage', () => {
     expect(profile.steps.every((step) => step.name.length > 0 && Number.isFinite(step.targetC))).toBe(true);
     expect('mergedSteps' in profile).toBe(false);
@@ -89,7 +99,7 @@ describe('mash schedule preservation', () => {
       { stepTemp: 66.7, stepTime: 60 },
       { stepTemp: 75, stepTime: 10 },
     ]);
-    expect(profile.steps.map((step) => step.name)).toContain('Mash rest — 52 °C');
-    expect(profile.steps.filter((step) => step.name.startsWith('Mash rest'))).toHaveLength(2);
+    expect(profile.steps.map((step) => step.name)).toContain('Mash rest');
+    expect(profile.steps.filter((step) => step.name === 'Mash rest')).toHaveLength(2);
   });
 });
