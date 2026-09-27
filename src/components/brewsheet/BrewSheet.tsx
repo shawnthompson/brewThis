@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, useEffect, useId, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import type { BrewfatherHop, BrewfatherRecipe } from '@/types';
 import {
   abv,
@@ -68,10 +68,9 @@ type ChecklistContextValue = {
 
 const ChecklistContext = React.createContext<ChecklistContextValue | null>(null);
 
-function Check({ children }: { children: React.ReactNode }) {
+function Check({ id, children }: { id: string; children: React.ReactNode }) {
   const checklist = useContext(ChecklistContext);
-  const generatedId = useId();
-  const checked = checklist?.values[generatedId] ?? false;
+  const checked = checklist?.values[id] ?? false;
 
   return (
     <li className={styles.check}>
@@ -80,12 +79,19 @@ function Check({ children }: { children: React.ReactNode }) {
           className={styles.checkInput}
           type="checkbox"
           checked={checked}
-          onChange={() => checklist?.toggle(generatedId)}
+          onChange={() => checklist?.toggle(id)}
         />
         <span>{children}</span>
       </label>
     </li>
   );
+}
+
+function newSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 type ReadingValues = Partial<Record<ReadingId, string>>;
@@ -175,28 +181,43 @@ export default function BrewSheet({
   overrides: BrewSheetOverrides;
 }) {
   const input = toBrewSheetInput(recipe, overrides);
-  const readingsKey = `brewThis:brewsheet:readings:${recipe._id}`;
+  const sessionPointerKey = `brewThis:brewsheet:session:${recipe._id}`;
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [readingValues, setReadingValues] = useState<ReadingValues>({});
-  const checklistKey = `brewThis:brewsheet:checklist:${recipe._id}`;
   const [checklistValues, setChecklistValues] = useState<ChecklistValues>({});
+  const readingsKey = sessionId
+    ? `brewThis:brewsheet:readings:${recipe._id}:${sessionId}`
+    : null;
+  const checklistKey = sessionId
+    ? `brewThis:brewsheet:checklist:${recipe._id}:${sessionId}`
+    : null;
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(readingsKey);
-      if (stored) setReadingValues(JSON.parse(stored) as ReadingValues);
+      const stored = window.localStorage.getItem(sessionPointerKey);
+      const id = stored || newSessionId();
+      if (!stored) window.localStorage.setItem(sessionPointerKey, id);
+      setSessionId(id);
     } catch {
-      // A private browsing context or malformed local data should leave fields blank.
+      // A private browsing context starts with an in-memory session.
+      setSessionId(newSessionId());
     }
-  }, [readingsKey]);
+  }, [sessionPointerKey]);
 
   useEffect(() => {
+    setReadingValues({});
+    setChecklistValues({});
+    if (!readingsKey || !checklistKey) return;
+
     try {
-      const stored = window.localStorage.getItem(checklistKey);
-      if (stored) setChecklistValues(JSON.parse(stored) as ChecklistValues);
+      const storedReadings = window.localStorage.getItem(readingsKey);
+      if (storedReadings) setReadingValues(JSON.parse(storedReadings) as ReadingValues);
+      const storedChecklist = window.localStorage.getItem(checklistKey);
+      if (storedChecklist) setChecklistValues(JSON.parse(storedChecklist) as ChecklistValues);
     } catch {
-      // A private browsing context or malformed local data leaves boxes unchecked.
+      // Malformed local data leaves the current session blank and unchecked.
     }
-  }, [checklistKey]);
+  }, [readingsKey, checklistKey]);
 
   const updateReading = (id: ReadingId, value: string) => {
     setReadingValues((current) => {
@@ -204,7 +225,7 @@ export default function BrewSheet({
       if (value === '') delete next[id];
       else next[id] = value;
       try {
-        window.localStorage.setItem(readingsKey, JSON.stringify(next));
+        if (readingsKey) window.localStorage.setItem(readingsKey, JSON.stringify(next));
       } catch {
         // Printing still uses the in-memory value if browser storage is unavailable.
       }
@@ -216,12 +237,23 @@ export default function BrewSheet({
     setChecklistValues((current) => {
       const next = { ...current, [id]: !current[id] };
       try {
-        window.localStorage.setItem(checklistKey, JSON.stringify(next));
+        if (checklistKey) window.localStorage.setItem(checklistKey, JSON.stringify(next));
       } catch {
         // The checkbox still works in memory if browser storage is unavailable.
       }
       return next;
     });
+  };
+
+  const startNewBrew = () => {
+    if (!window.confirm('Start a new brew? The current readings and checklist will be cleared from this sheet.')) return;
+    const id = newSessionId();
+    try {
+      window.localStorage.setItem(sessionPointerKey, id);
+    } catch {
+      // The new session still works in memory if browser storage is unavailable.
+    }
+    setSessionId(id);
   };
 
   const field = (id: ReadingId, hint?: React.ReactNode) => (
@@ -349,6 +381,7 @@ export default function BrewSheet({
           <div className="col-12 d-flex gap-2">
             <button type="submit" className="btn btn-outline-secondary btn-sm">Recalculate</button>
             <a href="?" className="btn btn-link btn-sm">Reset</a>
+            <button type="button" className="btn btn-outline-danger btn-sm" onClick={startNewBrew}>Start new brew</button>
             <span className="ms-auto"><PrintButton /></span>
           </div>
         </form>
@@ -405,7 +438,7 @@ export default function BrewSheet({
           <h2>Grain bill — {fmt(input.grainKg, 2)} kg</h2>
           <ul className={styles.checklist}>
             {grist.map((f, i) => (
-              <Check key={i}>{fmt(f.amount, 2)} kg {f.name}</Check>
+              <Check id={`grain-${f._id ?? i}`} key={i}>{fmt(f.amount, 2)} kg {f.name}</Check>
             ))}
           </ul>
         </section>
@@ -413,7 +446,7 @@ export default function BrewSheet({
           <h2>Yeast</h2>
           <ul className={styles.checklist}>
             {yeasts.map((y, i) => (
-              <Check key={i}>
+              <Check id={`yeast-${y._id ?? y.productId ?? i}`} key={i}>
                 {y.amount ?? ''} {y.unit ?? ''} {y.laboratory ? `${y.laboratory} ` : ''}{y.name}
                 {y.minTemp !== undefined && y.maxTemp !== undefined && <> ({y.minTemp}–{y.maxTemp} °C)</>}
               </Check>
@@ -453,18 +486,18 @@ export default function BrewSheet({
         <div className={styles.phase}><h2>Day before</h2></div>
         <Step n={next()} title="Day before — water and acid">
         <ul className={styles.checklist}>
-          <Check>{PH.instrumentStatus}</Check>
-          <Check>Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
+          <Check id="day-before-calibration">{PH.instrumentStatus}</Check>
+          <Check id="day-before-collect-water">Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
         </ul>
         {field('untreatedWaterPh')}
         <Warning>{SAFETY.coldTap}</Warning>
         <Warning>{SAFETY.probeStorage}</Warning>
         <Warning>{SAFETY.lacticAcid}</Warning>
         <ul className={styles.checklist}>
-          {mashSalts.length > 0 && <Check>Add strike water-treatment additions: {mashSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
-          {spargeSalts.length > 0 && <Check>Add sparge water-treatment additions: {spargeSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
-          <Check>Strike water: <strong>{fmt(c.strikeAcidMl)} mL</strong> lactic acid 88% ({input.hasCrystalOrRoast ? 'grist has crystal/roast' : 'pale grist, no crystal/roast'}).</Check>
-          <Check>Sparge water: <strong>{fmt(spargeAcidMl)} mL</strong> lactic acid 88% {!plan.spargeAcidMl && <Est />}.</Check>
+          {mashSalts.length > 0 && <Check id="day-before-mash-salts">Add strike water-treatment additions: {mashSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
+          {spargeSalts.length > 0 && <Check id="day-before-sparge-salts">Add sparge water-treatment additions: {spargeSalts.map((m) => `${fmt(m.amount, 2)} ${m.unit} ${m.name}`).join(', ')}.</Check>}
+          <Check id="day-before-strike-acid">Strike water: <strong>{fmt(c.strikeAcidMl)} mL</strong> lactic acid 88% ({input.hasCrystalOrRoast ? 'grist has crystal/roast' : 'pale grist, no crystal/roast'}).</Check>
+          <Check id="day-before-sparge-acid">Sparge water: <strong>{fmt(spargeAcidMl)} mL</strong> lactic acid 88% {!plan.spargeAcidMl && <Est />}.</Check>
         </ul>
         {field('strikeWaterPh')}
         {field('spargeWaterPh')}
@@ -475,14 +508,14 @@ export default function BrewSheet({
         <div className={styles.phase}><h2>Mash</h2></div>
         <Step n={next()} title="Heat strike water and mash in">
         <ul className={styles.checklist}>
-          <Check>
+          <Check id="mash-heat-strike">
             Heat <strong>{fmt(c.strikeWaterL)} L</strong> to <strong>{fmt(c.strikeTempC)} °C</strong> (mash {fmt(mashInTempC)} °C,
             grain at {fmt(input.grainTempC)} °C, {fmt(c.strikeWaterL / input.grainKg, 2)} L/kg).
           </Check>
-          <Check>Dough in {fmt(input.grainKg, 2)} kg slowly, stirring out every dough ball.</Check>
-          {hops.mash.map((h, i) => <Check key={i}>Mash hop: {hopLine(h)}</Check>)}
+          <Check id="mash-dough-in">Dough in {fmt(input.grainKg, 2)} kg slowly, stirring out every dough ball.</Check>
+          {hops.mash.map((h, i) => <Check id={`mash-hop-${h._id ?? i}`} key={i}>Mash hop: {hopLine(h)}</Check>)}
           {mashSteps.map((s, i) => (
-            <Check key={i}>
+            <Check id={`mash-step-${i}`} key={i}>
               {s.name ? `${s.name}: ` : `Step ${i + 1}: `}
               {fmt(s.stepTemp ?? s.temp)} °C for {s.stepTime ?? s.time ?? '—'} min
             </Check>
@@ -515,7 +548,7 @@ export default function BrewSheet({
         </div>
         {field('mashPhCorrected')}
         <ul className={styles.checklist}>
-          <Check>{SANITISE_DURING_MASH}</Check>
+          <Check id="mash-sanitise">{SANITISE_DURING_MASH}</Check>
         </ul>
       </Step>
 
@@ -523,7 +556,7 @@ export default function BrewSheet({
         <div className={styles.phase}><h2>Mash-out, lauter &amp; sparge</h2></div>
         <Step n={next()} title="Sparge water, mash out, lift malt pipe, sparge">
         <ul className={styles.checklist}>
-          <Check>
+          <Check id="sparge-prepare-water">
             Prepare {fmt(spargePrepareL)} L
             {plan.spargeMarkL !== undefined && <>; pour to the {fmt(plan.spargeMarkL)} L mark — the mark governs, not the litre count</>}
             {spargeTempC !== undefined && <> to {fmt(spargeTempC)} °C</>}.
@@ -532,9 +565,9 @@ export default function BrewSheet({
         {field('spargePhBeforeUse')}
         <Warning>{SAFETY.maltPipeLift}</Warning>
         <ul className={styles.checklist}>
-          <Check>Lift and seat the malt pipe on its supports.</Check>
-          <Check>Sparge slowly with the prepared water{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}; let it drain fully.</Check>
-          {hops.firstWort.map((h, i) => <Check key={i}>First wort hop: {hopLine(h)}</Check>)}
+          <Check id="sparge-lift-malt-pipe">Lift and seat the malt pipe on its supports.</Check>
+          <Check id="sparge-drain">Sparge slowly with the prepared water{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}; let it drain fully.</Check>
+          {hops.firstWort.map((h, i) => <Check id={`first-wort-hop-${h._id ?? i}`} key={i}>First wort hop: {hopLine(h)}</Check>)}
         </ul>
         </Step>
       </div>
@@ -579,9 +612,9 @@ export default function BrewSheet({
             <span className={styles.blankShort} /> points vs target OG {sg(recipe.og)}
           </p>
           <ul className={styles.checklist}>
-            <Check>{COURSE_CORRECTION.onTarget}</Check>
-            <Check>{COURSE_CORRECTION.low}</Check>
-            <Check>{COURSE_CORRECTION.high}</Check>
+            <Check id="boil-efficiency-on-target">{COURSE_CORRECTION.onTarget}</Check>
+            <Check id="boil-efficiency-low">{COURSE_CORRECTION.low}</Check>
+            <Check id="boil-efficiency-high">{COURSE_CORRECTION.high}</Check>
           </ul>
         </div>
         </Step>
@@ -595,12 +628,12 @@ export default function BrewSheet({
         </>}
         <ul className={styles.checklist}>
             {hops.boil.map((h, i) => (
-              <Check key={`h${i}`}>
+              <Check id={`boil-hop-${h._id ?? i}`} key={`h${i}`}>
                 {h.time} min: {hopLine(h)}
                 {/Cascade/i.test(h.name ?? '') && <> in 2 coarse socks, ~25 g each.</>}
               </Check>
             ))}
-            {boilMiscs.map((m, i) => <Check key={`m${i}`}>{miscLine(m)}</Check>)}
+            {boilMiscs.map((m, i) => <Check id={`boil-misc-${i}`} key={`m${i}`}>{miscLine(m)}</Check>)}
           </ul>
       </Step>
 
@@ -610,9 +643,9 @@ export default function BrewSheet({
         <Rule>{RULES.whirlpool}</Rule>
         {whirlpoolContainment && <Rule>{whirlpoolContainment}</Rule>}
         <ul className={styles.checklist}>
-          <Check>Element off. Chill to {WHIRLPOOL_TEMP_C} °C.</Check>
+          <Check id="whirlpool-chill">Element off. Chill to {WHIRLPOOL_TEMP_C} °C.</Check>
           {hops.whirlpool.length === 0 && <li className={styles.small}>No whirlpool hops in this recipe.</li>}
-          {hops.whirlpool.map((h, i) => <Check key={i}>{hopLine(h)}</Check>)}
+          {hops.whirlpool.map((h, i) => <Check id={`whirlpool-hop-${h._id ?? i}`} key={i}>{hopLine(h)}</Check>)}
         </ul>
         {field('whirlpoolTemp', <>target {WHIRLPOOL_TEMP_C} °C</>)}
         {field('whirlpoolDuration', <>target {WHIRLPOOL_MINUTES} min</>)}
@@ -625,8 +658,8 @@ export default function BrewSheet({
         <Warning>{SAFETY.transfer}</Warning>
         <Warning>{SAFETY.hotWortSplash}</Warning>
         <ul className={styles.checklist}>
-          <Check>Chill to pitch temperature{fermSteps[0]?.stepTemp !== undefined && <> ({fmt(fermSteps[0].stepTemp)} °C)</>}.</Check>
-          <Check>Transfer to the sanitised fermenter (sanitised during the mash), sitting below the tap.</Check>
+          <Check id="transfer-chill">Chill to pitch temperature{fermSteps[0]?.stepTemp !== undefined && <> ({fmt(fermSteps[0].stepTemp)} °C)</>}.</Check>
+          <Check id="transfer-to-fermenter">Transfer to the sanitised fermenter (sanitised during the mash), sitting below the tap.</Check>
         </ul>
         {field('transferTemp')}
         {field('fermenterVolume', <>target {fmt(input.batchSizeL)} L</>)}
@@ -643,9 +676,9 @@ export default function BrewSheet({
       <Step n={next()} title="Pitch and ferment">
         <Warning>{SAFETY.fermenterLight}</Warning>
         <ul className={styles.checklist}>
-          {yeasts.map((y, i) => <Check key={i}>Pitch {y.amount ?? ''} {y.unit ?? ''} {y.name}.</Check>)}
+          {yeasts.map((y, i) => <Check id={`pitch-yeast-${y._id ?? y.productId ?? i}`} key={i}>Pitch {y.amount ?? ''} {y.unit ?? ''} {y.name}.</Check>)}
           {fermSteps.map((s, i) => (
-            <Check key={`f${i}`}>{s.type ?? 'Step'}: {fmt(s.stepTemp ?? s.temp)} °C for {s.stepTime ?? s.time ?? '—'} days</Check>
+            <Check id={`fermentation-step-${i}`} key={`f${i}`}>{s.type ?? 'Step'}: {fmt(s.stepTemp ?? s.temp)} °C for {s.stepTime ?? s.time ?? '—'} days</Check>
           ))}
         </ul>
         <Rule>{RULES.fermentationRamp}</Rule>
@@ -654,7 +687,7 @@ export default function BrewSheet({
           <>
             <h4 className={styles.subhead}>Dry hops</h4>
             <ul className={styles.checklist}>
-              {hops.dryHop.map((h, i) => <Check key={i}>Day {h.day ?? '—'}: {hopLine(h)}</Check>)}
+              {hops.dryHop.map((h, i) => <Check id={`dry-hop-${h._id ?? i}`} key={i}>Day {h.day ?? '—'}: {hopLine(h)}</Check>)}
             </ul>
           </>
         )}
@@ -672,7 +705,7 @@ export default function BrewSheet({
           <span className={styles.unit}>%</span>
         </div>
         <ul className={styles.checklist}>
-          <Check>{plan.packaging ?? RULES.purgeKeg}</Check>
+          <Check id="finish-package">{plan.packaging ?? RULES.purgeKeg}</Check>
         </ul>
       </Step>
 
@@ -687,14 +720,14 @@ export default function BrewSheet({
         <div className={styles.phase}><h2>After brew day</h2></div>
         <Step n={next()} title="After brew day">
         <ul className={styles.checklist}>
-          <Check>Hold {fermSteps[0]?.stepTemp ?? '19–20'} °C days 0–4.</Check>
-          <Check>Dry hop day {hops.dryHop[0]?.day ?? 4}: {fmt(sumAmount(hops.dryHop), 0)} g {hops.dryHop[0]?.name ?? 'Citra'}; 3-day contact.</Check>
-          <Check>From ~day 5, allow +2 °C to 21–22 °C.</Check>
-          <Check>Hold 2–3 days at terminal gravity before crashing or packaging.</Check>
-          <Check>Confirm gravity is stable over 48 h.</Check>
-          <Check>Cold crash 0–3 °C for 2–5 days if there is space.</Check>
-          <Check>Take FG on the Tilt.</Check>
-          {packagingSteps.map((step) => <Check key={step}>{step.endsWith('.') ? step : `${step}.`}</Check>)}
+          <Check id="after-hold-temperature">Hold {fermSteps[0]?.stepTemp ?? '19–20'} °C days 0–4.</Check>
+          <Check id="after-dry-hop">Dry hop day {hops.dryHop[0]?.day ?? 4}: {fmt(sumAmount(hops.dryHop), 0)} g {hops.dryHop[0]?.name ?? 'Citra'}; 3-day contact.</Check>
+          <Check id="after-temperature-ramp">From ~day 5, allow +2 °C to 21–22 °C.</Check>
+          <Check id="after-terminal-hold">Hold 2–3 days at terminal gravity before crashing or packaging.</Check>
+          <Check id="after-gravity-stable">Confirm gravity is stable over 48 h.</Check>
+          <Check id="after-cold-crash">Cold crash 0–3 °C for 2–5 days if there is space.</Check>
+          <Check id="after-fg-tilt">Take FG on the Tilt.</Check>
+          {packagingSteps.map((step, i) => <Check id={`after-packaging-${i}`} key={step}>{step.endsWith('.') ? step : `${step}.`}</Check>)}
         </ul>
         </Step>
       </div>
