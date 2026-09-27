@@ -10,7 +10,14 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export const metadata: Metadata = { title: 'Brew Sheet — BrewThis' };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const recipe = await loadRecipeOrNull(id);
+
+  return {
+    title: recipe ? `${recipe.name} — Brew Sheet — BrewThis` : 'Brew Sheet — BrewThis',
+  };
+}
 
 export default async function BrewSheetPage({ params, searchParams }: Props) {
   const { id } = await params;

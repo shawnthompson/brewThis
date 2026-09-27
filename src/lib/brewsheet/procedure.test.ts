@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { PH, PH_BRANCHES, phBranch, readingNumber } from './procedure';
+import { expectedMashPhDisplay, PH, PH_BRANCHES, PH_INSTRUMENT, phBranch, readingNumber, SAFETY } from './procedure';
 
 describe('mash pH instructions', () => {
   it('uses the NIST buffer calibration instruction', () => {
-    expect(PH.calibrate).toBe('Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.');
+    expect(PH.instrumentStatus).toBe('Meter calibrated 2026-09-26. Do not recalibrate before brewing. Take readings through the meter display offset.');
   });
 
   it('keeps the water expectation separate from the recipe target', () => {
-    expect(PH.expectedRange).toBe('5.5–5.6');
-    expect(PH.expected).toContain('Expected mash pH 5.5–5.6 on this water');
-    expect(PH.provisionalThresholds).toContain('OPEN DECISION');
+    expect(expectedMashPhDisplay({ low: 5.5, high: 5.6 }, PH_INSTRUMENT).label).toBe('5.40–5.55');
+    expect(PH.expected).toContain('sample cooled to 20–25 °C');
+    expect(PH.provisionalThresholds).toContain('CLOSED 2026-09-26');
+  });
+
+  it('keeps every safety string non-empty', () => {
+    expect(Object.values(SAFETY).every((text) => text.length > 0)).toBe(true);
   });
 });
 

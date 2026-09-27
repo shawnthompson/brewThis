@@ -141,6 +141,30 @@
 
 .procedureTitle { break-after: avoid; page-break-after: avoid; margin: 0.5rem 0; font-size: 1.1em !important; border-bottom: 2px solid #111; }
 
+.timeline {
+  border: 1px solid #999;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 0.75rem;
+  break-inside: avoid;
+
+  h2 { break-after: avoid; page-break-after: avoid; }
+  ol { margin: 0; padding-left: 1.4rem; }
+}
+
+.phase {
+  break-after: avoid;
+  page-break-after: avoid;
+  margin-top: 0.5rem;
+
+  h2 { margin: 0 0 0.35rem; font-size: 1.1em; break-after: avoid; page-break-after: avoid; }
+}
+
+.phaseGroup {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+
 .step {
   border: 1px solid #999;
   padding: 0.5rem 0.65rem;
@@ -215,6 +239,8 @@
     box-shadow: none !important;
   }
 
+  .sheet a { color: #000 !important; text-decoration: none !important; }
+
   .warning { border-left-width: 5px; }
   .panel, .step { border-color: #000; }
   .grid { gap: 0.4rem; margin-bottom: 0.4rem; grid-template-columns: 1fr 1fr; }
@@ -227,5 +253,18 @@
   .checklist { margin-bottom: 0.2rem; }
   .tree, .effCheck, .correction { padding: 0.2rem 0.4rem; margin: 0.2rem 0; }
   .notes { margin-bottom: 0; }
-  .notesLines { background-image: none !important; border-bottom: 1px solid #000; height: 4rem; }
+  .notes {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  .notesLines {
+    background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 1.4rem, #000 1.4rem, #000 1.45rem) !important;
+    border-bottom: 0;
+    height: 8rem;
+  }
+
+  .phaseGroup {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

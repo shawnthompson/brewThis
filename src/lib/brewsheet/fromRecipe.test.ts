@@ -3,6 +3,7 @@ import type { BrewfatherRecipe } from '@/types';
 import {
   efficiencyFor,
   brewSheetPlanFromRecipe,
+  hopContainment,
   hopsByUse,
   mashPhTargetFromRecipe,
   parseOverride,
@@ -92,10 +93,9 @@ describe('mashPhTargetFromRecipe', () => {
       ].join('\n'),
     });
     expect(input).toMatchObject({ strikeWaterL: 18, preBoilVolumeL: 25, totalWaterL: 30.2 });
-    expect(brewSheetPlanFromRecipe({ notes: 'Brew date: 2026-09-28\nSparge acid: 1.5 mL\nProcess: Optional cold crash 0–3 °C for 2–5 days. Packaging: purge keg; carbonate 2.4 volumes.' })).toMatchObject({
+    expect(brewSheetPlanFromRecipe({ notes: 'Brew date: 2026-09-28\nSparge acid: 1.5 mL' })).toMatchObject({
       brewDate: '2026-09-28',
       spargeAcidMl: 1.5,
-      process: 'Optional cold crash 0–3 °C for 2–5 days. Packaging: purge keg; carbonate 2.4 volumes.',
     });
     expect(brewSheetPlanFromRecipe({ notes: 'FG: unknown; measure on the Tilt.' }).fgUnknown).toBe(true);
   });
@@ -158,6 +158,25 @@ describe('hopsByUse', () => {
     expect(h.boil.map((x) => x.time)).toEqual([60, 5]);
     expect(h.dryHop.map((x) => x.day)).toEqual([3, 7]);
     expect(h.whirlpool).toHaveLength(2);
+  });
+});
+
+describe('hopContainment', () => {
+  it('sizes bags from the loaded hop charge', () => {
+    expect(hopContainment([{ name: 'Citra', amount: 200 }])).toEqual({
+      totalG: 200,
+      bagCount: 4,
+      gramsPerBag: 50,
+      names: ['Citra'],
+    });
+    expect(hopContainment([{ name: 'Citra', amount: 250 }])).toMatchObject({
+      bagCount: 4,
+      gramsPerBag: 62,
+    });
+  });
+
+  it('returns no instruction for an empty charge', () => {
+    expect(hopContainment([])).toBeUndefined();
   });
 });
 

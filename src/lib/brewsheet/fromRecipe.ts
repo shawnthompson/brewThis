@@ -26,6 +26,13 @@ export interface MashPhTarget {
   label: string;
 }
 
+export interface HopContainment {
+  totalG: number;
+  bagCount: number;
+  gramsPerBag: number;
+  names: string[];
+}
+
 export interface BrewSheetPlan {
   brewDate?: string;
   fgUnknown?: boolean;
@@ -38,7 +45,6 @@ export interface BrewSheetPlan {
   preBoilGravity?: string;
   spargeAcidMl?: number;
   packaging?: string;
-  process?: string;
 }
 
 export type EfficiencySource = 'override' | 'brewfather' | 'default';
@@ -133,6 +139,23 @@ export function hopsByUse(recipe: BrewfatherRecipe) {
   };
 }
 
+export function hopContainment(
+  hops: Pick<BrewfatherHop, 'amount' | 'name'>[],
+  maxGramsPerBag = 65
+): HopContainment | undefined {
+  const totalG = hops.reduce((total, hop) => total + (hop.amount ?? 0), 0);
+  if (totalG <= 0) return undefined;
+
+  const bagCount = Math.max(1, Math.ceil(totalG / maxGramsPerBag));
+  const names = [...new Set(hops.map((hop) => hop.name?.trim()).filter((name): name is string => Boolean(name)))];
+  return {
+    totalG,
+    bagCount,
+    gramsPerBag: Math.floor(totalG / bagCount),
+    names,
+  };
+}
+
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 function noteLine(notes: string | undefined, label: string): string | undefined {
@@ -146,7 +169,6 @@ function noteNumber(notes: string | undefined, label: string): number | undefine
 }
 
 export function brewSheetPlanFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>): BrewSheetPlan {
-  const process = noteLine(recipe.notes, 'Process')?.split(':').slice(1).join(':').trim();
   return {
     brewDate: noteLine(recipe.notes, 'Brew date')?.split(':').slice(1).join(':').trim(),
     fgUnknown: /^unknown/i.test(noteLine(recipe.notes, 'FG')?.split(':').slice(1).join(':').trim() ?? ''),
@@ -159,7 +181,6 @@ export function brewSheetPlanFromRecipe(recipe: Pick<BrewfatherRecipe, 'notes'>)
     preBoilGravity: noteLine(recipe.notes, 'Pre-boil gravity')?.split(':').slice(1).join(':').trim(),
     spargeAcidMl: noteNumber(recipe.notes, 'Sparge acid'),
     packaging: recipe.notes?.match(/Packaging:\s*([^\n]+)/i)?.[1]?.trim(),
-    process,
   };
 }
 
