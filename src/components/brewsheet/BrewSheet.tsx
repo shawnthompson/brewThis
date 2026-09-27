@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useContext, useEffect, useId, useState } from 'react';
 import type { BrewfatherHop, BrewfatherRecipe } from '@/types';
 import {
   abv,
@@ -58,22 +60,60 @@ function Rule({ children }: { children: React.ReactNode }) {
   return <p className={styles.rule}>{children}</p>;
 }
 
+type ChecklistValues = Record<string, boolean>;
+type ChecklistContextValue = {
+  values: ChecklistValues;
+  toggle: (id: string) => void;
+};
+
+const ChecklistContext = React.createContext<ChecklistContextValue | null>(null);
+
 function Check({ children }: { children: React.ReactNode }) {
+  const checklist = useContext(ChecklistContext);
+  const generatedId = useId();
+  const checked = checklist?.values[generatedId] ?? false;
+
   return (
     <li className={styles.check}>
-      <span className={styles.box} aria-hidden="true" />
-      <span>{children}</span>
+      <label className={styles.checkLabel}>
+        <input
+          className={styles.checkInput}
+          type="checkbox"
+          checked={checked}
+          onChange={() => checklist?.toggle(generatedId)}
+        />
+        <span>{children}</span>
+      </label>
     </li>
   );
 }
 
-function ReadingField({ id, hint }: { id: ReadingId; hint?: React.ReactNode }) {
+type ReadingValues = Partial<Record<ReadingId, string>>;
+
+function ReadingField({
+  id,
+  hint,
+  value,
+  onChange,
+}: {
+  id: ReadingId;
+  hint?: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   const r = reading(id);
   return (
     <div className={styles.reading}>
       <span className={styles.readingNo}>R{r.number}</span>
-      <span className={styles.readingLabel}>{r.label}</span>
-      <span className={styles.blank} />
+      <label className={styles.readingLabel} htmlFor={`reading-${id}`}>{r.label}</label>
+      <input
+        className={styles.blankInput}
+        id={`reading-${id}`}
+        name={`reading-${id}`}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={`R${r.number} ${r.label}`}
+      />
       {r.unit && <span className={styles.unit}>{r.unit}</span>}
       {hint && <span className={styles.hint}>{hint}</span>}
     </div>
@@ -135,6 +175,63 @@ export default function BrewSheet({
   overrides: BrewSheetOverrides;
 }) {
   const input = toBrewSheetInput(recipe, overrides);
+  const readingsKey = `brewThis:brewsheet:readings:${recipe._id}`;
+  const [readingValues, setReadingValues] = useState<ReadingValues>({});
+  const checklistKey = `brewThis:brewsheet:checklist:${recipe._id}`;
+  const [checklistValues, setChecklistValues] = useState<ChecklistValues>({});
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(readingsKey);
+      if (stored) setReadingValues(JSON.parse(stored) as ReadingValues);
+    } catch {
+      // A private browsing context or malformed local data should leave fields blank.
+    }
+  }, [readingsKey]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(checklistKey);
+      if (stored) setChecklistValues(JSON.parse(stored) as ChecklistValues);
+    } catch {
+      // A private browsing context or malformed local data leaves boxes unchecked.
+    }
+  }, [checklistKey]);
+
+  const updateReading = (id: ReadingId, value: string) => {
+    setReadingValues((current) => {
+      const next = { ...current };
+      if (value === '') delete next[id];
+      else next[id] = value;
+      try {
+        window.localStorage.setItem(readingsKey, JSON.stringify(next));
+      } catch {
+        // Printing still uses the in-memory value if browser storage is unavailable.
+      }
+      return next;
+    });
+  };
+
+  const toggleChecklist = (id: string) => {
+    setChecklistValues((current) => {
+      const next = { ...current, [id]: !current[id] };
+      try {
+        window.localStorage.setItem(checklistKey, JSON.stringify(next));
+      } catch {
+        // The checkbox still works in memory if browser storage is unavailable.
+      }
+      return next;
+    });
+  };
+
+  const field = (id: ReadingId, hint?: React.ReactNode) => (
+    <ReadingField
+      id={id}
+      hint={hint}
+      value={readingValues[id] ?? ''}
+      onChange={(value) => updateReading(id, value)}
+    />
+  );
 
   if (!(input.grainKg > 0) || !(input.batchSizeL > 0)) {
     return (
@@ -212,7 +309,8 @@ export default function BrewSheet({
   const next = () => ++n;
 
   return (
-    <main className={`container py-4 ${styles.sheet}`}>
+    <ChecklistContext.Provider value={{ values: checklistValues, toggle: toggleChecklist }}>
+      <main className={`container py-4 ${styles.sheet}`}>
       <header className={styles.header}>
         <div>
           <h1>{recipe.name}</h1>
@@ -335,7 +433,7 @@ export default function BrewSheet({
         <ol className={styles.masterList}>
           {READINGS.map((r) => (
             <li key={r.id}>
-              <ReadingField id={r.id} />
+              {field(r.id)}
             </li>
           ))}
         </ol>
@@ -358,7 +456,7 @@ export default function BrewSheet({
           <Check>{PH.instrumentStatus}</Check>
           <Check>Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
         </ul>
-        <ReadingField id="untreatedWaterPh" />
+        {field('untreatedWaterPh')}
         <Warning>{SAFETY.coldTap}</Warning>
         <Warning>{SAFETY.probeStorage}</Warning>
         <Warning>{SAFETY.lacticAcid}</Warning>
@@ -368,8 +466,8 @@ export default function BrewSheet({
           <Check>Strike water: <strong>{fmt(c.strikeAcidMl)} mL</strong> lactic acid 88% ({input.hasCrystalOrRoast ? 'grist has crystal/roast' : 'pale grist, no crystal/roast'}).</Check>
           <Check>Sparge water: <strong>{fmt(spargeAcidMl)} mL</strong> lactic acid 88% {!plan.spargeAcidMl && <Est />}.</Check>
         </ul>
-        <ReadingField id="strikeWaterPh" />
-        <ReadingField id="spargeWaterPh" />
+        {field('strikeWaterPh')}
+        {field('spargeWaterPh')}
         </Step>
       </div>
 
@@ -390,14 +488,14 @@ export default function BrewSheet({
             </Check>
           ))}
         </ul>
-        <ReadingField id="mashInTemp" hint={<>target {fmt(mashInTempC)} °C</>} />
+        {field('mashInTemp', <>target {fmt(mashInTempC)} °C</>)}
         </Step>
       </div>
 
       <Step n={next()} title="Mash pH at 15 minutes">
         <p><strong>TARGET:</strong> {mashPhTarget?.label ?? 'Not recorded in recipe note — record the recipe-specific target before brew day.'}</p>
         <p><strong>EXPECTED (meter display):</strong> {expectedMashPh?.label ?? 'Unknown'}; display offset {offsetLabel()}. {PH.expected}</p>
-        <ReadingField id="mashPh15" />
+        {field('mashPh15')}
         <div className={styles.tree}>
           {PH_BRANCHES.map((b) => (
             <div key={b.id} className={styles.branch}>
@@ -415,7 +513,7 @@ export default function BrewSheet({
           <span className={styles.blank} />
           <span className={styles.unit}>mL (max 2)</span>
         </div>
-        <ReadingField id="mashPhCorrected" />
+        {field('mashPhCorrected')}
         <ul className={styles.checklist}>
           <Check>{SANITISE_DURING_MASH}</Check>
         </ul>
@@ -431,7 +529,7 @@ export default function BrewSheet({
             {spargeTempC !== undefined && <> to {fmt(spargeTempC)} °C</>}.
           </Check>
         </ul>
-        <ReadingField id="spargePhBeforeUse" />
+        {field('spargePhBeforeUse')}
         <Warning>{SAFETY.maltPipeLift}</Warning>
         <ul className={styles.checklist}>
           <Check>Lift and seat the malt pipe on its supports.</Check>
@@ -444,9 +542,9 @@ export default function BrewSheet({
       <div className={styles.phaseGroup}>
         <div className={styles.phase}><h2>Boil</h2></div>
         <Step n={next()} title="Pre-boil check — the last point a bad number can be fixed">
-        <ReadingField id="preBoilVolume" hint={<>target {fmt(c.preBoilVolumeL)} L <Est /></>} />
-        <ReadingField id="preBoilGravity" hint={<>target {preBoilDisplay}</>} />
-        <ReadingField id="preBoilDeadspace" />
+        {field('preBoilVolume', <>target {fmt(c.preBoilVolumeL)} L <Est /></>)}
+        {field('preBoilGravity', <>target {preBoilDisplay}</>)}
+        {field('preBoilDeadspace')}
         {efficiencyCases.length > 0 && (
           <div className={styles.effCheck}>
             <p><strong>Efficiency check</strong> — compare R{reading('preBoilGravity').number}:</p>
@@ -516,8 +614,8 @@ export default function BrewSheet({
           {hops.whirlpool.length === 0 && <li className={styles.small}>No whirlpool hops in this recipe.</li>}
           {hops.whirlpool.map((h, i) => <Check key={i}>{hopLine(h)}</Check>)}
         </ul>
-        <ReadingField id="whirlpoolTemp" hint={<>target {WHIRLPOOL_TEMP_C} °C</>} />
-        <ReadingField id="whirlpoolDuration" hint={<>target {WHIRLPOOL_MINUTES} min</>} />
+        {field('whirlpoolTemp', <>target {WHIRLPOOL_TEMP_C} °C</>)}
+        {field('whirlpoolDuration', <>target {WHIRLPOOL_MINUTES} min</>)}
         </Step>
       </div>
 
@@ -530,16 +628,16 @@ export default function BrewSheet({
           <Check>Chill to pitch temperature{fermSteps[0]?.stepTemp !== undefined && <> ({fmt(fermSteps[0].stepTemp)} °C)</>}.</Check>
           <Check>Transfer to the sanitised fermenter (sanitised during the mash), sitting below the tap.</Check>
         </ul>
-        <ReadingField id="transferTemp" />
-        <ReadingField id="fermenterVolume" hint={<>target {fmt(input.batchSizeL)} L</>} />
-        <ReadingField id="og" hint={<>target {sg(recipe.og)}</>} />
+        {field('transferTemp')}
+        {field('fermenterVolume', <>target {fmt(input.batchSizeL)} L</>)}
+        {field('og', <>target {sg(recipe.og)}</>)}
         </Step>
       </div>
 
       <Step n={next()} title="Aerate">
         <Rule>{RULES.aeration}</Rule>
         <Warning>{SAFETY.aerationLift}</Warning>
-        <ReadingField id="aeration" />
+        {field('aeration')}
       </Step>
 
       <Step n={next()} title="Pitch and ferment">
@@ -551,7 +649,7 @@ export default function BrewSheet({
           ))}
         </ul>
         <Rule>{RULES.fermentationRamp}</Rule>
-        <ReadingField id="fermentationTemp" />
+        {field('fermentationTemp')}
         {hops.dryHop.length > 0 && (
           <>
             <h4 className={styles.subhead}>Dry hops</h4>
@@ -565,8 +663,8 @@ export default function BrewSheet({
 
       <Step n={next()} title="Finish and package">
         <Rule><strong>⚠ {RULES.terminalHold}</strong></Rule>
-        <ReadingField id="gravityStableDate" />
-        <ReadingField id="fg" />
+        {field('gravityStableDate')}
+        {field('fg')}
         <p className={styles.fgWarn}>⚠ {SAFETY.fgInstrument}</p>
         <div className={styles.reading}>
           <span className={styles.readingLabel}>ABV = (R{reading('og').number} − R{reading('fg').number}) × 131.25</span>
@@ -605,6 +703,7 @@ export default function BrewSheet({
         <h3>Notes</h3>
         <div className={styles.notesLines} />
       </section>
-    </main>
+      </main>
+    </ChecklistContext.Provider>
   );
 }

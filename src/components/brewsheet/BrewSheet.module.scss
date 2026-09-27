@@ -62,7 +62,10 @@
 .est { font-size: 0.75em; font-style: italic; font-weight: 600; margin-left: 0.15em; }
 
 .checklist { list-style: none; padding: 0; margin: 0 0 0.35rem; }
-.check { display: flex; gap: 0.45rem; align-items: flex-start; margin-bottom: 0.15rem; }
+.check { margin-bottom: 0.15rem; }
+.checkLabel { display: flex; gap: 0.45rem; align-items: flex-start; cursor: pointer; }
+.checkInput { flex: 0 0 auto; width: 1rem; height: 1rem; margin: 0.15rem 0 0; accent-color: #111; }
+.checkInput:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
 
 .box {
   flex: 0 0 auto;
@@ -112,6 +115,25 @@
   max-width: 14rem;
   border-bottom: 1.5px solid #111;
   height: 1.4rem;
+}
+
+.blankInput {
+  flex: 1 1 6rem;
+  min-width: 6rem;
+  max-width: 14rem;
+  height: 1.4rem;
+  padding: 0 0.15rem;
+  border: 0;
+  border-bottom: 1.5px solid #111;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.blankInput:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
 }
 
 .blankShort {
@@ -248,8 +270,15 @@
   .panel { padding: 0.35rem 0.5rem; }
   .reading { margin: 0.15rem 0; min-height: 1.3rem; }
   .blank { height: 1.15rem; }
+  .blankInput {
+    height: 1.15rem;
+    padding: 0;
+    outline: none !important;
+  }
   .warning { padding: 0.15rem 0.4rem; margin: 0.2rem 0; }
   .check { margin-bottom: 0; }
+  .checkLabel { cursor: default; }
+  .checkInput { accent-color: #000; }
   .checklist { margin-bottom: 0.2rem; }
   .tree, .effCheck, .correction { padding: 0.2rem 0.4rem; margin: 0.2rem 0; }
   .notes { margin-bottom: 0; }
