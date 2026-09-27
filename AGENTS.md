@@ -4,7 +4,6 @@ This file is source code for the agent. Keep it under 150 lines. Edit it by
 hand and review changes in PRs. Do not regenerate it or use @-imports.
 
 ## Product
-
 brewThis is a personal brewing app for a BrewZilla Gen 4.1 35 L system. Its
 purpose is a printable, equipment-specific brew-day sheet:
 
@@ -90,20 +89,24 @@ Hop containment is computed from the recipe's hops (`hopContainment()`), never h
 Do not add a second mechanism.
 
 ## RAPT profile export
-
 The RAPT output is a paste-ready document only. It must not contain RAPT credentials,
 API calls, profile uploads, device control, telemetry or webhooks. Manual intervention
-points use an 80 °C live hold and carry the dry-fire/scorch warning. Strike uses the
-calculated one-decimal value, followed by a separate manual Add grains step at mash
-temperature. Emit every configured mash rest; Mash out is one timer step starting on
-target reached. The boil is split: manual heat to 105 °C, then a 60-minute timer with
+points use an 80 °C live hold and carry the dry-fire/scorch warning. The alert is a
+device event at step start; the copied document's top warning is supplementary. The
+warning is general for Flameout and chill; Sparging carries its own first-runnings
+clause. Strike uses the calculated one-decimal value, followed by a separate manual
+Add grains step at mash temperature. Emit every configured mash rest; Mash out is one timer step starting on target reached.
+The boil is split: manual heat to 105 °C, then a 60-minute timer with
 `timerStart: onStepStart`; the whirlpool is an 80 °C, 20-minute `onStepStart` timer.
 Every timer has an explicit start, every alert uses one of the three portal triggers,
 and every temperature trigger is below the physical plateau. There is no six-stage cap;
-do not emit a merged profile. Servomyces and Whirlfloc quantities carry visible
-manufacturer reference flags when the recipe supplies a quantity. Exact 105 °C
+do not emit a merged profile. Servomyces and Whirlfloc quantities receive amount-aware
+manufacturer-reference flags. These are data comparisons, not safety warnings, so
+static templates may interpolate measured amounts. Servomyces is 1–2 g/hL; Whirlfloc
+uses Kerry's published 2 tablets per 117.35 L of 10 Plato wort. Brewfather `items` for
+Whirlfloc maps to `tablet`.
+Decimal target temperatures were confirmed accepted 2026-09-27. Exact 105 °C
 behavior outside this rig and import/export format remain unverified.
-
 ## Mash pH
 
 The pH meter is calibrated as of 2026-09-26. **Do not recalibrate before brew day.**

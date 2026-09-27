@@ -7,16 +7,19 @@ const citraInput = {
   mashTempC: 66.7, grainTempC: 20, hasCrystalOrRoast: false,
 };
 
-function citraProfile(mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }]) {
+function citraProfile(
+  mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }],
+  miscAdditions = [
+    { name: 'Servomyces', amount: 1, unit: 'capsule', time: 15, use: 'Boil' },
+    // Deliberately outside the manufacturer reference rate for this 19 L batch.
+    { name: 'Whirlfloc', amount: 1, unit: 'items', time: 15, use: 'Boil' },
+  ]
+) {
   return buildRaptProfile(citraInput, {
     recipeName: 'Citra IPA',
     mashSteps,
     boilHops: [{ name: 'Cascade', amount: 50, time: 60, use: 'Boil' }],
-    miscAdditions: [
-      { name: 'Servomyces', amount: 1, unit: 'capsule', time: 15, use: 'Boil' },
-      // Deliberately outside the 20–25 L reference range for this 19 L batch.
-      { name: 'Whirlfloc', amount: 1, unit: 'tablet', time: 15, use: 'Boil' },
-    ],
+    miscAdditions,
     whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, use: 'Whirlpool' }],
     preBoilGravityTarget: '~1.054 at 25 L',
   });
@@ -68,6 +71,7 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(alerts).toContain('Servomyces');
     expect(alerts).toContain('FLAG');
     expect(alerts).toContain('Whirlfloc');
+    expect(alerts).toContain('1 tablet Whirlfloc');
     expect(alerts).not.toContain('Servomyces — FLAG');
     expect(alerts).toContain('~1.054 at 25 L');
     expect(alerts).toContain('refractometer');
@@ -85,12 +89,12 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
 
   it('keeps the live-setpoint warning on the kettle-risk steps', () => {
     const warned = profile.steps.filter((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.liveSetpointWarning));
-    expect(warned.map((step) => step.name)).toEqual(['Sparging', 'Boil heat', 'Boil', 'Whirlpool']);
+    expect(warned.map((step) => step.name)).toEqual(['Heat strike water', 'Add grains', 'Sparging', 'Check gravity (pre-boil)', 'Boil heat', 'Boil', 'Whirlpool', 'Flameout and chill']);
   });
 
   it('renders the live-setpoint warning once at the top and on kettle-risk steps', () => {
     const copied = renderRaptProfile(profile);
-    expect(copied.split(RAPT_SAFETY.liveSetpointWarning).length - 1).toBe(5);
+    expect(copied.split(RAPT_SAFETY.liveSetpointWarning).length - 1).toBe(9);
   });
 
   it('keeps the boil as the only intentionally split pair', () => {
@@ -109,5 +113,24 @@ describe('mash schedule preservation', () => {
     ]);
     expect(profile.steps.map((step) => step.name)).toContain('Mash rest');
     expect(profile.steps.filter((step) => step.name === 'Mash rest')).toHaveLength(2);
+  });
+});
+
+describe('amount-aware manufacturer reference flags', () => {
+  const misc = (amount: number, unit = 'g') => [{ name: 'Servomyces', amount, unit, time: 15, use: 'Boil' }];
+  const boilAlert = (amount: number, unit = 'g') => citraProfile(undefined, misc(amount, unit)).steps[7].alerts
+    .find((alert) => alert.when === 'elapsed')?.message ?? '';
+
+  it('reports the direction and range for low Servomyces', () => {
+    expect(boilAlert(0.05)).toContain('Servomyces 0.05 g is ~4× below the reference for a 19 L batch (use 0.19–0.38 g).');
+  });
+
+  it('does not flag in-range Servomyces at 0.19 g or 0.3 g', () => {
+    expect(boilAlert(0.19)).not.toContain('FLAG');
+    expect(boilAlert(0.3)).not.toContain('FLAG');
+  });
+
+  it('accepts one capsule for a 19 L batch', () => {
+    expect(boilAlert(1, 'capsule')).not.toContain('FLAG');
   });
 });

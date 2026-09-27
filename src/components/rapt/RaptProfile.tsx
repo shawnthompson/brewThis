@@ -3,7 +3,7 @@
 import React from 'react';
 import type { BrewfatherRecipe } from '@/types';
 import { brewSheetPlanFromRecipe, hopsByUse, toBrewSheetInput } from '@/lib/brewsheet/fromRecipe';
-import { buildRaptProfile, RAPT_END_LABELS, RAPT_TYPE_LABELS, renderRaptProfile, raptAlertTriggerLabel } from '@/lib/rapt/profile';
+import { buildRaptProfile, normalizeRaptMiscUnit, RAPT_END_LABELS, RAPT_TYPE_LABELS, renderRaptProfile, raptAlertTriggerLabel } from '@/lib/rapt/profile';
 import { RAPT_SAFETY } from '@/lib/brewsheet/procedure';
 
 export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
@@ -15,7 +15,7 @@ export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
     mashSteps: recipe.mash?.steps,
     boilHops: hops.boil,
     whirlpoolHops: hops.whirlpool,
-    miscAdditions: (recipe.miscs ?? []).map((m) => ({ name: m.name, amount: m.amount, unit: m.unit, time: m.time, use: m.use })),
+    miscAdditions: (recipe.miscs ?? []).map((m) => ({ name: m.name, amount: m.amount, unit: normalizeRaptMiscUnit(m.name, m.unit), time: m.time, use: m.use })),
     preBoilGravityTarget: plan.preBoilGravity,
   });
 
@@ -41,7 +41,7 @@ export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
       </ol>
       <section className="d-print-none mt-4">
         <h2 className="h4">Unverified portal assumptions</h2>
-        <ul><li>Whether the portal accepts decimal target temperatures such as 72.2 °C is unverified; do not silently truncate.</li><li>The exact portal handling of a 105 °C unreachable boil setpoint is observed on this rig but remains unverified as a general portal rule.</li><li>Boil-off and grain absorption are unmeasured assumptions. Current notes disagree between 0.80 L/kg and approximately 1.0 L/kg absorption; the app does not resolve that disagreement.</li></ul>
+        <ul><li>The exact portal handling of a 105 °C unreachable boil setpoint is observed on this rig but remains unverified as a general portal rule.</li><li>Boil-off and grain absorption are unmeasured assumptions. Current notes disagree between 0.80 L/kg and approximately 1.0 L/kg absorption; the app does not resolve that disagreement.</li></ul>
         <h2 className="h4 mt-4">Alternatives report</h2>
         <p><strong>1. Manual authoring handoff — this round.</strong> Lowest risk and exactly what this generator supports: paste the generated profile into the portal once per beer. It needs no credentials or spec change beyond this generator.</p>
         <p><strong>2. Round-trip verification — recommended next.</strong> Read <code>GetProfiles</code>/<code>GetProfile</code>, store a profile id, model the live <code>ProfileModel</code>, and diff only normalized portal fields. Useful, but requires RAPT credentials and a portal export/shape decision. The live Swagger exposes reads but no profile create/save operation.</p>

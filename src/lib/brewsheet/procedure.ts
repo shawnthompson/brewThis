@@ -34,14 +34,17 @@ export const SAFETY = {
 
 export const RAPT_SAFETY = {
   energisesDevice: 'Sending a profile energises the device. Stay at the kettle during heating and boil-over watch.',
-  liveSetpointWarning: 'Never let this step run on a low kettle — 1500 W into a shallow volume of sugary first runnings is how elements scorch. For sparging, the kettle must already be holding the first runnings (~13–14 L).',
+  liveSetpointWarning: 'Never let a live setpoint run on a low kettle — 1500 W into a shallow volume of sugary first runnings is how elements scorch.',
   boilImminent: 'Boil imminent — boil-over watch; press when rolling.',
   boilOverWatch: SAFETY.boilOver,
 } as const;
 
 export const RAPT_REFERENCE_FLAGS = {
-  servomyces: 'Manufacturer reference: 1 g per 100 L; capsules are 1 capsule per 4–26 L. Check this recipe quantity before brewing.',
-  whirlfloc: 'Manufacturer reference: 1 tablet per 20–25 L.',
+  servomyces: 'Servomyces {amount} g is ~{ratio}× {direction} the reference for a {batchSizeL} L batch (use {low}–{high} g).',
+  servomycesCheck: 'Check this recipe quantity against the 1–2 g/hL reference.',
+  // Kerry's published typical rate is 2 tablets per US barrel of 10 Plato wort:
+  // https://s3-us-west-2.amazonaws.com/gabf/wp-content/uploads/2015/09/09102801/BSG_CRAFTBREWING.pdf
+  whirlfloc: 'Whirlfloc {amount} tablet dose is ~{ratio}× {direction} the manufacturer reference for a {batchSizeL} L batch (typical rate: 2 tablets per 117.35 L of 10 Plato wort).',
 } as const;
 
 export const ACID_CAVEAT =

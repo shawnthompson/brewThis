@@ -60,16 +60,14 @@ const fmt = (value: number) => String(value);
 const names = (items: { name?: string }[]) => [...new Set(items.map((x) => x.name?.trim()).filter(Boolean))].join(', ');
 const amount = (value: number | undefined, unit = 'g') => value === undefined ? '' : `${fmt(value)} ${unit} `;
 
-// The copied profile carries this warning once at the top. Keep step-level
-// copies only where a live setpoint can energise a kettle that may be low.
-const LIVE_SETPOINT_STEPS = new Set(['Sparging', 'Boil heat', 'Boil', 'Whirlpool']);
-
 function liveSetpointWarning(): RaptAlert {
   return { when: 'stepStart', message: RAPT_SAFETY.liveSetpointWarning };
 }
 
-function stepWarnings(name: string): RaptAlert[] {
-  return LIVE_SETPOINT_STEPS.has(name) ? [liveSetpointWarning()] : [];
+function stepWarnings(step: Pick<RaptStep, 'endCondition' | 'targetC' | 'timerStart'>): RaptAlert[] {
+  const isManualHold = step.endCondition === 'manual';
+  const isLiveHold = step.targetC === 80 || (step.targetC === 105 && step.timerStart === 'onStepStart');
+  return isManualHold || isLiveHold ? [liveSetpointWarning()] : [];
 }
 
 function timedStep(
@@ -79,15 +77,17 @@ function timedStep(
   alerts: RaptAlert[] = [],
   timerStart: RaptTimerStart = 'onTargetReached'
 ): RaptStep {
-  return {
+  const step: RaptStep = {
     name,
     type: 'heat',
     targetC,
     endCondition: 'timer',
     timerStart,
     durationMinutes,
-    alerts: [...stepWarnings(name), ...alerts],
+    alerts: [],
   };
+  step.alerts = [...stepWarnings(step), ...alerts];
+  return step;
 }
 
 function stepTemperature(step: BrewfatherMashStep): number | undefined {
@@ -105,16 +105,18 @@ function mashSteps(input: BrewSheetInput, schedule: RaptScheduleInput, strikeTem
     type: 'heat',
     targetC: strikeTempC,
     endCondition: 'manual',
-    alerts: stepWarnings('Heat strike water'),
+    alerts: [],
   }];
+  steps[0].alerts = stepWarnings(steps[0]);
 
   steps.push({
     name: 'Add grains',
     type: 'heat',
     targetC: input.mashTempC,
     endCondition: 'manual',
-    alerts: [{ when: 'stepStart', message: 'Manual point: add and mix the grain, then press the device button.' }],
+    alerts: [],
   });
+  steps[1].alerts = [...stepWarnings(steps[1]), { when: 'stepStart', message: 'Manual point: add and mix the grain, then press the device button.' }];
 
   const rests = configured.length > 0 ? configured : [{ stepTemp: input.mashTempC, stepTime: 60 }];
   for (const rest of rests) {
@@ -132,21 +134,56 @@ function mashSteps(input: BrewSheetInput, schedule: RaptScheduleInput, strikeTem
 
 function miscReferenceFlag(item: RaptMiscAddition, batchSizeL: number): string | undefined {
   if (item.amount === undefined) return undefined;
-  const unit = item.unit?.toLowerCase() ?? '';
+  const unit = normalizeRaptMiscUnit(item.name, item.unit)?.toLowerCase() ?? '';
   if (/servomyces/i.test(item.name)) {
     const capsuleDoseIsInRange = /capsule/.test(unit) && item.amount === 1 && batchSizeL >= 4 && batchSizeL <= 26;
-    const gramDoseIsAtReferenceRate = /\bg\b|gram/.test(unit) && Math.abs(item.amount - batchSizeL / 100) < 0.001;
-    return capsuleDoseIsInRange || gramDoseIsAtReferenceRate ? undefined : `FLAG: ${RAPT_REFERENCE_FLAGS.servomyces}`;
+    const low = batchSizeL * 0.01;
+    const high = batchSizeL * 0.02;
+    const gramDoseIsInRange = /\bg\b|gram/.test(unit) && item.amount >= low && item.amount <= high;
+    if (capsuleDoseIsInRange || gramDoseIsInRange) return undefined;
+    if (!/\bg\b|gram/.test(unit)) return `FLAG: ${RAPT_REFERENCE_FLAGS.servomycesCheck}`;
+    const reference = item.amount < low ? low : high;
+    return `FLAG: ${renderReference(RAPT_REFERENCE_FLAGS.servomyces, {
+      amount: formatGrams(item.amount),
+      ratio: formatRatio(reference / item.amount),
+      direction: item.amount < low ? 'below' : 'above',
+      batchSizeL,
+      low: formatGrams(low),
+      high: formatGrams(high),
+    })}`;
   }
   if (/whirlfloc/i.test(item.name)) {
-    const tabletDoseIsInRange = /tablet/.test(unit) && item.amount === 1 && batchSizeL >= 20 && batchSizeL <= 25;
-    return tabletDoseIsInRange ? undefined : `FLAG: ${RAPT_REFERENCE_FLAGS.whirlfloc}`;
+    const expected = batchSizeL * 2 / 117.35;
+    const tabletDoseIsInRange = /tablet/.test(unit) && item.amount >= expected * 0.5 && item.amount <= expected * 1.5;
+    if (tabletDoseIsInRange) return undefined;
+    return `FLAG: ${renderReference(RAPT_REFERENCE_FLAGS.whirlfloc, {
+      amount: item.amount,
+      ratio: formatRatio(Math.max(expected / item.amount, item.amount / expected)),
+      direction: item.amount < expected ? 'below' : 'above',
+      batchSizeL,
+    })}`;
   }
   return undefined;
 }
 
+export function normalizeRaptMiscUnit(name: string, unit: string | undefined): string | undefined {
+  return /whirlfloc/i.test(name) && unit?.toLowerCase() === 'items' ? 'tablet' : unit;
+}
+
+function formatGrams(value: number): string {
+  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function formatRatio(value: number): string {
+  return String(Math.round(value));
+}
+
+function renderReference(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key]));
+}
+
 function miscLabel(item: RaptMiscAddition, batchSizeL: number): string {
-  const label = `${amount(item.amount, item.unit)}${item.name}`.trim();
+  const label = `${amount(item.amount, normalizeRaptMiscUnit(item.name, item.unit))}${item.name}`.trim();
   const flag = miscReferenceFlag(item, batchSizeL);
   return flag ? `${label} — ${flag}` : label;
 }
@@ -186,13 +223,13 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
     ...mashSteps(input, schedule, strikeTempC),
     {
       name: 'Sparging',
-      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [...stepWarnings('Sparging'), {
+      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 80 }), {
         when: 'stepStart', message: 'Manual point: sparge with the kettle holding the first runnings; do not run this step on a low kettle.',
       }],
     },
     {
       name: 'Check gravity (pre-boil)',
-      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [{
+      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 80 }), {
         when: 'stepStart', message: `Manual point: check approximately ${gravityTarget} with a refractometer and record the reading.`,
       }],
     },
@@ -200,25 +237,25 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
       // This split is driven by the unreachable 105 °C setpoint and timer
       // semantics, not by the placement of an alert.
       name: 'Boil heat',
-      type: 'heat', targetC: 105, endCondition: 'manual', alerts: [...stepWarnings('Boil heat'), {
+      type: 'heat', targetC: 105, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 105 }), {
         when: 'temperatureReached', temperatureC: 98, message: `${RAPT_SAFETY.boilImminent} ${RAPT_SAFETY.boilOverWatch}`,
       }],
     },
     {
       name: 'Boil',
       type: 'heat', targetC: 105, endCondition: 'timer', timerStart: 'onStepStart', durationMinutes: input.boilMinutes,
-      alerts: [...stepWarnings('Boil'), {
+      alerts: [...stepWarnings({ endCondition: 'timer', targetC: 105, timerStart: 'onStepStart' }), {
         when: 'stepStart', message: boilStart ? `Add ${boilStart}.` : 'Follow the recipe boil additions at step start.',
       }, ...(boilMisc ? [{ when: 'elapsed' as const, elapsedMinutes: 45, message: `Add ${boilMisc}.` }] : [])],
     },
     {
       name: 'Whirlpool',
       type: 'heat', targetC: 80, endCondition: 'timer', timerStart: 'onStepStart', durationMinutes: whirlpoolMinutes,
-      alerts: [...stepWarnings('Whirlpool'), { when: 'stepStart', message: whirlpoolNames ? `Add ${whirlpoolNames} and start the whirlpool.` : 'Start the whirlpool according to the recipe.' }],
+      alerts: [...stepWarnings({ endCondition: 'timer', targetC: 80, timerStart: 'onStepStart' }), { when: 'stepStart', message: whirlpoolNames ? `Add ${whirlpoolNames} and start the whirlpool.` : 'Start the whirlpool according to the recipe.' }],
     },
     {
       name: 'Flameout and chill',
-      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [{
+      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 80 }), {
         when: 'stepStart', message: 'Manual point: flameout, pull the hop sock, and begin chilling.',
       }],
     },
