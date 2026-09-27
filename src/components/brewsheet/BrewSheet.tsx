@@ -351,9 +351,9 @@ export default function BrewSheet({
         </ol>
       </section>
 
-      <div className={styles.phase}><h2>Day before</h2></div>
-
-      <Step n={next()} title="Day before — water and acid">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Day before</h2></div>
+        <Step n={next()} title="Day before — water and acid">
         <ul className={styles.checklist}>
           <Check>{PH.instrumentStatus}</Check>
           <Check>Collect strike water {fmt(c.strikeWaterL)} L and prepare sparge water {fmt(spargePrepareL)} L{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}.</Check>
@@ -370,11 +370,12 @@ export default function BrewSheet({
         </ul>
         <ReadingField id="strikeWaterPh" />
         <ReadingField id="spargeWaterPh" />
-      </Step>
+        </Step>
+      </div>
 
-      <div className={styles.phase}><h2>Mash</h2></div>
-
-      <Step n={next()} title="Heat strike water and mash in">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Mash</h2></div>
+        <Step n={next()} title="Heat strike water and mash in">
         <ul className={styles.checklist}>
           <Check>
             Heat <strong>{fmt(c.strikeWaterL)} L</strong> to <strong>{fmt(c.strikeTempC)} °C</strong> (mash {fmt(mashInTempC)} °C,
@@ -390,7 +391,8 @@ export default function BrewSheet({
           ))}
         </ul>
         <ReadingField id="mashInTemp" hint={<>target {fmt(mashInTempC)} °C</>} />
-      </Step>
+        </Step>
+      </div>
 
       <Step n={next()} title="Mash pH at 15 minutes">
         <p><strong>TARGET:</strong> {mashPhTarget?.label ?? 'Not recorded in recipe note — record the recipe-specific target before brew day.'}</p>
@@ -419,9 +421,9 @@ export default function BrewSheet({
         </ul>
       </Step>
 
-      <div className={styles.phase}><h2>Mash-out, lauter &amp; sparge</h2></div>
-
-      <Step n={next()} title="Sparge water, mash out, lift malt pipe, sparge">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Mash-out, lauter &amp; sparge</h2></div>
+        <Step n={next()} title="Sparge water, mash out, lift malt pipe, sparge">
         <ul className={styles.checklist}>
           <Check>
             Prepare {fmt(spargePrepareL)} L
@@ -436,11 +438,12 @@ export default function BrewSheet({
           <Check>Sparge slowly with the prepared water{plan.spargeMarkL !== undefined && <>; stop at the {fmt(plan.spargeMarkL)} L mark</>}; let it drain fully.</Check>
           {hops.firstWort.map((h, i) => <Check key={i}>First wort hop: {hopLine(h)}</Check>)}
         </ul>
-      </Step>
+        </Step>
+      </div>
 
-      <div className={styles.phase}><h2>Boil</h2></div>
-
-      <Step n={next()} title="Pre-boil check — the last point a bad number can be fixed">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Boil</h2></div>
+        <Step n={next()} title="Pre-boil check — the last point a bad number can be fixed">
         <ReadingField id="preBoilVolume" hint={<>target {fmt(c.preBoilVolumeL)} L <Est /></>} />
         <ReadingField id="preBoilGravity" hint={<>target {preBoilDisplay}</>} />
         <ReadingField id="preBoilDeadspace" />
@@ -483,7 +486,8 @@ export default function BrewSheet({
             <Check>{COURSE_CORRECTION.high}</Check>
           </ul>
         </div>
-      </Step>
+        </Step>
+      </div>
 
       <Step n={next()} title={`Boil — ${input.boilMinutes} min`}>
         {c.boilOverRisk && <>
@@ -502,9 +506,9 @@ export default function BrewSheet({
           </ul>
       </Step>
 
-      <div className={styles.phase}><h2>Whirlpool</h2></div>
-
-      <Step n={next()} title={`Whirlpool — ${WHIRLPOOL_TEMP_C} °C, ${WHIRLPOOL_MINUTES} min`}>
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Whirlpool</h2></div>
+        <Step n={next()} title={`Whirlpool — ${WHIRLPOOL_TEMP_C} °C, ${WHIRLPOOL_MINUTES} min`}>
         <Rule>{RULES.whirlpool}</Rule>
         {whirlpoolContainment && <Rule>{whirlpoolContainment}</Rule>}
         <ul className={styles.checklist}>
@@ -514,11 +518,12 @@ export default function BrewSheet({
         </ul>
         <ReadingField id="whirlpoolTemp" hint={<>target {WHIRLPOOL_TEMP_C} °C</>} />
         <ReadingField id="whirlpoolDuration" hint={<>target {WHIRLPOOL_MINUTES} min</>} />
-      </Step>
+        </Step>
+      </div>
 
-      <div className={styles.phase}><h2>Chill, transfer, aerate &amp; pitch</h2></div>
-
-      <Step n={next()} title="Chill and transfer">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Chill, transfer, aerate &amp; pitch</h2></div>
+        <Step n={next()} title="Chill and transfer">
         <Warning>{SAFETY.transfer}</Warning>
         <Warning>{SAFETY.hotWortSplash}</Warning>
         <ul className={styles.checklist}>
@@ -528,7 +533,8 @@ export default function BrewSheet({
         <ReadingField id="transferTemp" />
         <ReadingField id="fermenterVolume" hint={<>target {fmt(input.batchSizeL)} L</>} />
         <ReadingField id="og" hint={<>target {sg(recipe.og)}</>} />
-      </Step>
+        </Step>
+      </div>
 
       <Step n={next()} title="Aerate">
         <Rule>{RULES.aeration}</Rule>
@@ -572,13 +578,16 @@ export default function BrewSheet({
         </ul>
       </Step>
 
-      <div className={styles.phase}><h2>Cleanup</h2></div>
-      <Step n={next()} title="Cleanup">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>Cleanup</h2></div>
+        <Step n={next()} title="Cleanup">
         <p>{RULES.cleanup}</p>
-      </Step>
+        </Step>
+      </div>
 
-      <div className={styles.phase}><h2>After brew day</h2></div>
-      <Step n={next()} title="After brew day">
+      <div className={styles.phaseGroup}>
+        <div className={styles.phase}><h2>After brew day</h2></div>
+        <Step n={next()} title="After brew day">
         <ul className={styles.checklist}>
           <Check>Hold {fermSteps[0]?.stepTemp ?? '19–20'} °C days 0–4.</Check>
           <Check>Dry hop day {hops.dryHop[0]?.day ?? 4}: {fmt(sumAmount(hops.dryHop), 0)} g {hops.dryHop[0]?.name ?? 'Citra'}; 3-day contact.</Check>
@@ -589,7 +598,8 @@ export default function BrewSheet({
           <Check>Take FG on the Tilt.</Check>
           {packagingSteps.map((step) => <Check key={step}>{step.endsWith('.') ? step : `${step}.`}</Check>)}
         </ul>
-      </Step>
+        </Step>
+      </div>
 
       <section className={`${styles.step} ${styles.notes}`}>
         <h3>Notes</h3>
