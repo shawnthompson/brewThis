@@ -1,34 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import type { BrewfatherRecipe } from '@/types';
-import { toBrewSheetInput, hopsByUse } from '@/lib/brewsheet/fromRecipe';
-import { buildRaptProfile, type RaptProfile as RaptProfileData } from '@/lib/rapt/profile';
+import { brewSheetPlanFromRecipe, hopsByUse, toBrewSheetInput } from '@/lib/brewsheet/fromRecipe';
+import { buildRaptProfile, RAPT_END_LABELS, RAPT_TYPE_LABELS, renderRaptProfile, raptAlertTriggerLabel } from '@/lib/rapt/profile';
 import { RAPT_SAFETY } from '@/lib/brewsheet/procedure';
 
-const copyText = (profile: RaptProfileData, merged: boolean) => {
-  const steps = merged ? profile.mergedSteps : profile.steps;
-  return [profile.name, profile.description, '', ...steps.map((s, i) => `${i + 1}. ${s.name} | ${s.type} | ${s.targetC} °C | ${s.endCondition}${s.durationMinutes ? ` | ${s.durationMinutes} min` : ''}${s.alert ? ` | ${s.alert}` : ''}`)].join('\n');
-};
-
 export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
-  const [merged, setMerged] = useState(false);
-  const [copied, setCopied] = useState(false);
   const input = toBrewSheetInput(recipe);
   const hops = hopsByUse(recipe);
+  const plan = brewSheetPlanFromRecipe(recipe);
   const profile = buildRaptProfile(input, {
     recipeName: recipe.name,
     mashSteps: recipe.mash?.steps,
     boilHops: hops.boil,
     whirlpoolHops: hops.whirlpool,
-    miscAdditions: (recipe.miscs ?? []).map((m) => ({ name: m.name, time: m.time, use: m.use })),
+    miscAdditions: (recipe.miscs ?? []).map((m) => ({ name: m.name, amount: m.amount, unit: m.unit, time: m.time, use: m.use })),
+    preBoilGravityTarget: plan.preBoilGravity,
   });
-  const steps = merged ? profile.mergedSteps : profile.steps;
 
   async function copyProfile() {
-    await navigator.clipboard.writeText(copyText(profile, merged));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    await navigator.clipboard.writeText(renderRaptProfile(profile));
   }
 
   return (
@@ -36,21 +28,20 @@ export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
       <div className="d-print-none d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <a href={`/recipes/${recipe._id}/brewsheet`} className="btn btn-outline-secondary">Back to brew sheet</a>
         <div className="d-flex gap-2">
-          <button type="button" className="btn btn-outline-primary" onClick={() => setMerged(!merged)}>{merged ? 'Show full profile' : 'Show ≤6-stage profile'}</button>
-          <button type="button" className="btn btn-primary" onClick={copyProfile}>{copied ? 'Copied' : 'Copy profile'}</button>
+          <button type="button" className="btn btn-primary" onClick={copyProfile}>Copy profile</button>
           <button type="button" className="btn btn-outline-primary" onClick={() => window.print()}>Print</button>
         </div>
       </div>
       <h1>{profile.name}</h1>
       <p>{profile.description}</p>
       <div className="alert alert-warning" role="note"><strong>Safety:</strong> {RAPT_SAFETY.energisesDevice} {RAPT_SAFETY.boilOverWatch} {RAPT_SAFETY.noHeating}</div>
-      <h2 className="h4">{merged ? 'Merged profile (≤6 stages)' : 'Full profile'} — {steps.length} steps</h2>
+      <h2 className="h4">Full profile — {profile.steps.length} steps</h2>
       <ol>
-        {steps.map((step) => <li key={`${step.name}-${step.targetC}`} className="mb-3"><strong>{step.name}</strong><br />{step.type === 'heat' ? 'Heat/Cool to target temperature' : 'Gradual ramp to target over length of step'} — {step.targetC} °C — {step.endCondition}{step.durationMinutes ? ` — ${step.durationMinutes} min` : ''}{step.alert && <><br /><span>{step.alert}</span></>}</li>)}
+        {profile.steps.map((step) => <li key={`${step.name}-${step.targetC}`} className="mb-3"><strong>{step.name}</strong><br />{RAPT_TYPE_LABELS[step.type]} — {step.targetC} °C — {RAPT_END_LABELS[step.endCondition]}{step.durationMinutes ? ` — ${step.durationMinutes} min; timer starts ${step.timerStart}` : ''}{step.alerts.map((alert, index) => <React.Fragment key={`${alert.when}-${index}`}><br /><span>{raptAlertTriggerLabel(alert)} — {alert.message}</span></React.Fragment>)}</li>)}
       </ol>
       <section className="d-print-none mt-4">
         <h2 className="h4">Unverified portal assumptions</h2>
-        <ul><li>The advertised six programmable stages and any stored-profile cap are unverified.</li><li>Whether a timer starts on target reached, on pressing the device button, or under another portal rule is unverified.</li><li>The minimum accepted target temperature and whether an ambient target reliably disables heating are unverified.</li></ul>
+        <ul><li>Whether the portal accepts decimal target temperatures such as 72.2 °C is unverified; do not silently truncate.</li><li>The exact portal handling of a 105 °C unreachable boil setpoint is observed on this rig but remains unverified as a general portal rule.</li><li>Boil-off and grain absorption are unmeasured assumptions. Current notes disagree between 0.80 L/kg and approximately 1.0 L/kg absorption; the app does not resolve that disagreement.</li><li>The recipe&apos;s 52 °C mash rest conflicts with the vault entry sheet and the existing portal profile; this output preserves configured recipe steps but the source discrepancy remains unresolved.</li></ul>
         <h2 className="h4 mt-4">Alternatives report</h2>
         <p><strong>1. Manual authoring handoff — this round.</strong> Lowest risk and exactly what this generator supports: paste the generated profile into the portal once per beer. It needs no credentials or spec change beyond this generator.</p>
         <p><strong>2. Round-trip verification — recommended next.</strong> Read <code>GetProfiles</code>/<code>GetProfile</code>, store a profile id, model the live <code>ProfileModel</code>, and diff only normalized portal fields. Useful, but requires RAPT credentials and a portal export/shape decision. The live Swagger exposes reads but no profile create/save operation.</p>

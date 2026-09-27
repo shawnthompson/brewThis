@@ -93,10 +93,14 @@ Do not add a second mechanism.
 
 The RAPT output is a paste-ready document only. It must not contain RAPT credentials,
 API calls, profile uploads, device control, telemetry or webhooks. Manual intervention
-points remain manual; no-heating stages use an explicitly labelled ambient target.
-The full profile and a conservative merged <=6-stage handoff are both emitted. The
-six-stage cap, timer-start semantics, minimum accepted target, and portal import/export
-format remain unverified until checked in the portal.
+points use an 80 °C live hold on this rig and carry the dry-fire/scorch warning. The
+boil is split: manual heat to 105 °C, then a 60-minute timer with `timerStart:
+onStepStart`; the whirlpool is an 80 °C, 20-minute `onStepStart` timer. Every timer
+has an explicit start, every alert uses one of the three portal triggers, and every
+temperature trigger is below the physical plateau. There is no six-stage cap; do not
+emit a merged profile. Servomyces and Whirlfloc quantities carry visible manufacturer
+reference flags when the recipe supplies a quantity. Portal decimal-target handling,
+exact 105 °C behavior outside this rig, and import/export format remain unverified.
 
 ## Mash pH
 
