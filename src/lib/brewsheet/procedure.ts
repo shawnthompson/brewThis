@@ -32,6 +32,18 @@ export const SAFETY = {
     'FG must be taken on a hydrometer or Tilt, never a refractometer. Refractometers read falsely high once alcohol is present, which invents an ABV shortfall that is not real.',
 } as const;
 
+export const RAPT_SAFETY = {
+  energisesDevice: 'Sending a profile energises the device. Stay at the kettle during heating and boil-over watch.',
+  noHeating: 'Never let this step run on a low kettle — 1500 W into a shallow volume of sugary first runnings is how elements scorch. For sparging, the kettle must already be holding the first runnings (~13–14 L).',
+  boilImminent: 'Boil imminent — boil-over watch; press when rolling.',
+  boilOverWatch: SAFETY.boilOver,
+} as const;
+
+export const RAPT_REFERENCE_FLAGS = {
+  servomyces: 'Manufacturer reference: 1 g per 100 L; capsules are 1 capsule per 4–26 L. Check this recipe quantity before brewing.',
+  whirlfloc: 'Manufacturer reference: 1 tablet per 20–25 L.',
+} as const;
+
 export const ACID_CAVEAT =
   "Acid doses are derived from Montreal's published water analysis (99 mg/L alkalinity as CaCO3) and deliberately only partially corrected, to stay under the ~400 mg/L lactic flavour threshold. Mash pH must be measured.";
 
