@@ -7,7 +7,7 @@ describe('mash pH instructions', () => {
   });
 
   it('keeps the water expectation separate from the recipe target', () => {
-    expect(expectedMashPhDisplay({ low: 5.5, high: 5.6 }, PH_INSTRUMENT).label).toBe('5.40–5.55');
+    expect(expectedMashPhDisplay(PH.waterExpectedRange, PH_INSTRUMENT).label).toBe('5.40–5.55');
     expect(PH.expected).toContain('sample cooled to 20–25 °C');
     expect(PH.provisionalThresholds).toContain('OPEN DECISION');
   });

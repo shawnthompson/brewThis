@@ -3,6 +3,7 @@ import type { BrewfatherRecipe } from '@/types';
 import {
   efficiencyFor,
   brewSheetPlanFromRecipe,
+  hopContainment,
   hopsByUse,
   mashPhTargetFromRecipe,
   parseOverride,
@@ -157,6 +158,25 @@ describe('hopsByUse', () => {
     expect(h.boil.map((x) => x.time)).toEqual([60, 5]);
     expect(h.dryHop.map((x) => x.day)).toEqual([3, 7]);
     expect(h.whirlpool).toHaveLength(2);
+  });
+});
+
+describe('hopContainment', () => {
+  it('sizes bags from the loaded hop charge', () => {
+    expect(hopContainment([{ name: 'Citra', amount: 200 }])).toEqual({
+      totalG: 200,
+      bagCount: 4,
+      gramsPerBag: 50,
+      names: ['Citra'],
+    });
+    expect(hopContainment([{ name: 'Citra', amount: 250 }])).toMatchObject({
+      bagCount: 4,
+      gramsPerBag: 62,
+    });
+  });
+
+  it('returns no instruction for an empty charge', () => {
+    expect(hopContainment([])).toBeUndefined();
   });
 });
 

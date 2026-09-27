@@ -26,6 +26,13 @@ export interface MashPhTarget {
   label: string;
 }
 
+export interface HopContainment {
+  totalG: number;
+  bagCount: number;
+  gramsPerBag: number;
+  names: string[];
+}
+
 export interface BrewSheetPlan {
   brewDate?: string;
   fgUnknown?: boolean;
@@ -129,6 +136,23 @@ export function hopsByUse(recipe: BrewfatherRecipe) {
     dryHop: hops
       .filter((h) => /dry hop/i.test(use(h)))
       .sort((a, b) => (a.day ?? 0) - (b.day ?? 0)),
+  };
+}
+
+export function hopContainment(
+  hops: Pick<BrewfatherHop, 'amount' | 'name'>[],
+  maxGramsPerBag = 65
+): HopContainment | undefined {
+  const totalG = hops.reduce((total, hop) => total + (hop.amount ?? 0), 0);
+  if (totalG <= 0) return undefined;
+
+  const bagCount = Math.max(1, Math.ceil(totalG / maxGramsPerBag));
+  const names = [...new Set(hops.map((hop) => hop.name?.trim()).filter((name): name is string => Boolean(name)))];
+  return {
+    totalG,
+    bagCount,
+    gramsPerBag: Math.floor(totalG / bagCount),
+    names,
   };
 }
 

@@ -39,6 +39,7 @@ export const PH = {
   calibrate: 'Calibrate the pH meter the day before with fresh buffer - two points, NIST set, 6.86 first then 4.00.',
   instrumentStatus:
     'Meter calibrated 2026-09-26. Do not recalibrate before brewing. Take readings through the meter display offset.',
+  waterExpectedRange: { low: 5.5, high: 5.6, label: '5.5–5.6' },
   expected:
     'Measure on a sample cooled to 20–25 °C, at 15 minutes into the mash. Lactic acid reaches its ~400 mg/L flavour threshold before the mash gets down to 5.3, so the acid only partially corrects it.',
   provisionalThresholds:
@@ -98,8 +99,6 @@ export const RULES = {
     'Cleanup: use ~12 L water and ~168 g PBW in the BrewZilla, soak overnight, then rinse thoroughly the next day. Wash hop bags and socks immediately; spent hops sour fast. If it boiled over, hand-wash the jacket separately in warm soapy water and hang to dry.',
   afterBrewDay:
     'After brew day: hold 19–20 °C days 0–4; dry hop day 4 with 250 g in 4 bags (~62 g each) for 3-day contact, open briefly and do not stir; from ~day 5 allow +2 °C to 21–22 °C; hold 2–3 days at terminal gravity before crashing or packaging — never crash on the first flat reading; cold crash 0–3 °C for 2–5 days if keezer space allows; FG on the Tilt, never the refractometer; purge or pressurise the receiving keg before transfer; carbonate 2.4 volumes (= 10 PSI at 3 °C); expect 15.5–17 L packaged.',
-  whirlpoolContainment: 'Whirlpool 200 g Citra in 4 fine-mesh drawstring bags, ~50 g each.',
-  dryHopContainment: 'Dry hop 250 g Citra in 4 bags, ~62 g each; 3-day contact, open briefly and do not stir.',
 } as const;
 
 export const PH_INSTRUMENT = {
@@ -126,7 +125,7 @@ export const HOP_SOCK_THRESHOLD_G = 100;
 export const COURSE_CORRECTION = {
   intro: 'Course correction. Work in gravity points (the digits after 1.0):',
   formula: 'expected kettle points ≈ R9 points × R8 litres ÷ post-boil litres; ÷ 0.96 for cooling shrinkage → OG',
-  example: 'Example: 1.056 at 24 L boiling down to 21 L → 56 × 24 ÷ 21 = 64 → OG 1.064',
+  example: 'Example: 1.056 at 24 L boiling down to 21 L → 56 × 24 ÷ 21 = 64 ÷ 0.96 ≈ 67 → OG 1.067',
   onTarget: 'On target → proceed.',
   low: 'Low → extend the boil 15–20 min or accept the lower ABV. ⚠ Do not add sugar — it thins the body and gives a cidery edge, which is the fault under investigation.',
   high: 'High → top up with hot water.',
