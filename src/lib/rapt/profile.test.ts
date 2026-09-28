@@ -11,7 +11,7 @@ function citraProfile(
   mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }],
   miscAdditions = [
     { name: 'Servomyces', amount: 0.3, unit: 'g', time: 15, use: 'Boil' },
-    // Deliberately outside the manufacturer reference rate for this 19 L batch.
+    // Brewfather returns Whirlfloc as items; the output must render 1 tablet.
     { name: 'Whirlfloc', amount: 1, unit: 'items', time: 15, use: 'Boil' },
   ]
 ) {
@@ -126,6 +126,15 @@ describe('amount-aware manufacturer reference flags', () => {
 
   it('reports the direction and range for low Servomyces', () => {
     expect(boilAlert(0.05)).toContain('Servomyces 0.05 g is ~4× below the reference for a 19 L batch (use 0.19–0.38 g).');
+  });
+
+  it('reports an above-range Servomyces overdose without an inverted zero factor', () => {
+    expect(boilAlert(1.5)).toContain('Servomyces 1.5 g is ~4× above the reference for a 19 L batch (use 0.19–0.38 g).');
+    expect(boilAlert(1.5)).not.toContain('~0×');
+  });
+
+  it('reports a small above-range Servomyces excess to one decimal', () => {
+    expect(boilAlert(0.4)).toContain('Servomyces 0.4 g is ~1.1× above the reference for a 19 L batch (use 0.19–0.38 g).');
   });
 
   it('does not flag in-range Servomyces at 0.19 g or 0.3 g', () => {

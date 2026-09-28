@@ -144,7 +144,7 @@ function miscReferenceFlag(item: RaptMiscAddition, batchSizeL: number): string |
     const reference = item.amount < low ? low : high;
     return `FLAG: ${renderReference(RAPT_REFERENCE_FLAGS.servomyces, {
       amount: formatGrams(item.amount),
-      ratio: formatRatio(reference / item.amount),
+      ratio: formatRatio(item.amount < low ? reference / item.amount : item.amount / reference),
       direction: item.amount < low ? 'below' : 'above',
       batchSizeL,
       low: formatGrams(low),
@@ -163,7 +163,7 @@ function formatGrams(value: number): string {
 }
 
 function formatRatio(value: number): string {
-  return String(Math.round(value));
+  return value < 2 ? value.toFixed(1) : String(Math.round(value));
 }
 
 function renderReference(template: string, values: Record<string, string | number>): string {
