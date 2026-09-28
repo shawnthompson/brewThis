@@ -93,7 +93,7 @@ The RAPT output is a paste-ready document only. It must not contain RAPT credent
 API calls, profile uploads, device control, telemetry or webhooks. Manual intervention
 points use an 80 °C live hold and carry the dry-fire/scorch warning. The alert is a
 device event at step start; the copied document's top warning is supplementary. The
-warning is general for Flameout and chill; Sparging carries its own first-runnings
+warning is general for Cooling; Sparging carries its own first-runnings
 clause. Strike uses the calculated one-decimal value, followed by a separate manual
 Add grains step at mash temperature. Emit every configured mash rest; Mash out is one timer step starting on target reached.
 The boil is split: manual heat to 105 °C, then a 60-minute timer with
@@ -101,11 +101,12 @@ The boil is split: manual heat to 105 °C, then a 60-minute timer with
 uses `onTargetReached`; its step-start alert adds the chiller before the 80 °C hold.
 Every timer has an explicit start, every alert uses one of the three portal triggers,
 and every temperature trigger is below the physical plateau. There is no six-stage cap;
-do not emit a merged profile. Servomyces and Whirlfloc quantities receive amount-aware
-manufacturer-reference flags. These are data comparisons, not safety warnings, so
-static templates may interpolate measured amounts. Servomyces is 1–2 g/hL; Whirlfloc
-uses Kerry's published 2 tablets per 117.35 L of 10 Plato wort. Brewfather `items` for
-Whirlfloc maps to `tablet`.
+do not emit a merged profile. Only Servomyces is dose-checked; its data comparison is
+not a safety warning, so its static template may interpolate measured amounts.
+Whirlfloc is rendered without a reference check because the commercial rate is about
+3× the common homebrew convention of 1 tablet per 5 gal, so comparison flags every
+batch. Brewfather `items` for Whirlfloc maps to `tablet`. A step carrying more than
+one alert on the same trigger may not surface all of them; this is unverified.
 Decimal target temperatures were confirmed accepted 2026-09-27. Exact 105 °C
 behavior outside this rig and import/export format remain unverified. Whether a
 temperature-reached trigger fires while descending through its target is unverified.

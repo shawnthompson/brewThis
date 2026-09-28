@@ -42,9 +42,6 @@ export const RAPT_SAFETY = {
 export const RAPT_REFERENCE_FLAGS = {
   servomyces: 'Servomyces {amount} g is ~{ratio}× {direction} the reference for a {batchSizeL} L batch (use {low}–{high} g).',
   servomycesCheck: 'Check this recipe quantity against the 1–2 g/hL reference.',
-  // Kerry's published typical rate is 2 tablets per US barrel of 10 Plato wort:
-  // https://s3-us-west-2.amazonaws.com/gabf/wp-content/uploads/2015/09/09102801/BSG_CRAFTBREWING.pdf
-  whirlfloc: 'Whirlfloc {amount} tablet dose is ~{ratio}× {direction} the manufacturer reference for a {batchSizeL} L batch (typical rate: 2 tablets per 117.35 L of 10 Plato wort).',
 } as const;
 
 export const ACID_CAVEAT =

@@ -10,7 +10,7 @@ const citraInput = {
 function citraProfile(
   mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }],
   miscAdditions = [
-    { name: 'Servomyces', amount: 1, unit: 'capsule', time: 15, use: 'Boil' },
+    { name: 'Servomyces', amount: 0.3, unit: 'g', time: 15, use: 'Boil' },
     // Deliberately outside the manufacturer reference rate for this 19 L batch.
     { name: 'Whirlfloc', amount: 1, unit: 'items', time: 15, use: 'Boil' },
   ]
@@ -68,15 +68,14 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(profile.steps[9].alerts).toContainEqual({ when: 'temperatureReached', temperatureC: 30, message: 'Take the OG sample.' });
   });
 
-  it('keeps the recipe additions and visible manufacturer flag', () => {
+  it('keeps the recipe additions and renders the normalized Whirlfloc unit', () => {
     const alerts = profile.steps.flatMap((step) => step.alerts.map((alert) => alert.message)).join('\n');
     expect(alerts).toContain('50 g Cascade');
     expect(profile.steps[7].alerts).toContainEqual(expect.objectContaining({ when: 'elapsed', elapsedMinutes: 45 }));
     expect(alerts).toContain('Servomyces');
-    expect(alerts).toContain('FLAG');
     expect(alerts).toContain('Whirlfloc');
     expect(alerts).toContain('1 tablet Whirlfloc');
-    expect(alerts).not.toContain('Servomyces — FLAG');
+    expect(alerts).not.toContain('FLAG');
     expect(alerts).toContain('~1.054 at 25 L');
     expect(alerts).toContain('refractometer');
   });

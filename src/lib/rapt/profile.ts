@@ -151,17 +151,6 @@ function miscReferenceFlag(item: RaptMiscAddition, batchSizeL: number): string |
       high: formatGrams(high),
     })}`;
   }
-  if (/whirlfloc/i.test(item.name)) {
-    const expected = batchSizeL * 2 / 117.35;
-    const tabletDoseIsInRange = /tablet/.test(unit) && item.amount >= expected * 0.5 && item.amount <= expected * 1.5;
-    if (tabletDoseIsInRange) return undefined;
-    return `FLAG: ${renderReference(RAPT_REFERENCE_FLAGS.whirlfloc, {
-      amount: item.amount,
-      ratio: formatRatio(Math.max(expected / item.amount, item.amount / expected)),
-      direction: item.amount < expected ? 'below' : 'above',
-      batchSizeL,
-    })}`;
-  }
   return undefined;
 }
 
