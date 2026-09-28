@@ -195,8 +195,8 @@ export function toBrewSheetInput(
   const preBoilVolumeL = noteNumber(recipe.notes, 'Pre-boil volume');
   const totalWaterL = noteNumber(recipe.notes, 'Total water');
 
-  // On a step mash (e.g. a 52 °C protein rest first) the strike water must hit
-  // the first rest, not the conversion rest, or the earlier rest is skipped.
+  // On a step mash, the strike water must hit the first configured rest, not
+  // the conversion rest, or the earlier rest is skipped.
   const firstTemp = steps[0] && stepTemp(steps[0]);
   const mashInTempC =
     steps.length > 1 && steps[0] !== sacchStep && firstTemp !== undefined && firstTemp < mashTempC

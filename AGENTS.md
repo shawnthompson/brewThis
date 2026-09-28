@@ -4,7 +4,6 @@ This file is source code for the agent. Keep it under 150 lines. Edit it by
 hand and review changes in PRs. Do not regenerate it or use @-imports.
 
 ## Product
-
 brewThis is a personal brewing app for a BrewZilla Gen 4.1 35 L system. Its
 purpose is a printable, equipment-specific brew-day sheet:
 
@@ -90,27 +89,32 @@ Hop containment is computed from the recipe's hops (`hopContainment()`), never h
 Do not add a second mechanism.
 
 ## RAPT profile export
-
 The RAPT output is a paste-ready document only. It must not contain RAPT credentials,
 API calls, profile uploads, device control, telemetry or webhooks. Manual intervention
-points use an 80 °C live hold and carry the dry-fire/scorch warning. Strike uses the
-calculated one-decimal value, followed by a separate manual Add grains step at mash
-temperature. Emit every configured mash rest; Mash out is one timer step starting on
-target reached. The boil is split: manual heat to 105 °C, then a 60-minute timer with
-`timerStart: onStepStart`; the whirlpool is an 80 °C, 20-minute `onStepStart` timer.
+points use an 80 °C live hold and carry the dry-fire/scorch warning. The alert is a
+device event at step start; the copied document's top warning is supplementary. The
+warning is general for Cooling; Sparging carries its own first-runnings
+clause. Strike uses the calculated one-decimal value, followed by a separate manual
+Add grains step at mash temperature. Emit every configured mash rest; Mash out is one timer step starting on target reached.
+The boil is split: manual heat to 105 °C, then a 60-minute timer with
+`timerStart: onStepStart`; only an unreachable target forces that start. The whirlpool
+uses `onTargetReached`; its step-start alert adds the chiller before the 80 °C hold.
 Every timer has an explicit start, every alert uses one of the three portal triggers,
 and every temperature trigger is below the physical plateau. There is no six-stage cap;
-do not emit a merged profile. Servomyces and Whirlfloc quantities carry visible
-manufacturer reference flags when the recipe supplies a quantity. Exact 105 °C
-behavior outside this rig and import/export format remain unverified.
-
+do not emit a merged profile. Only Servomyces is dose-checked; its data comparison is
+not a safety warning, so its static template may interpolate measured amounts.
+Whirlfloc is rendered without a reference check because the commercial rate is about
+3× the common homebrew convention of 1 tablet per 5 gal, so comparison flags every
+batch. Brewfather `items` for Whirlfloc maps to `tablet`. A step carrying more than
+one alert on the same trigger may not surface all of them; this is unverified.
+Decimal target temperatures were confirmed accepted 2026-09-27. Exact 105 °C
+behavior outside this rig and import/export format remain unverified. Whether a
+temperature-reached trigger fires while descending through its target is unverified.
 ## Mash pH
 
 The pH meter is calibrated as of 2026-09-26. **Do not recalibrate before brew day.**
 The day-before step reads: "Meter calibrated 2026-09-26. Do not recalibrate before
 brewing. Take readings through the meter display offset." (`PH.instrumentStatus`).
-The old "calibrate the day before" instruction is retired.
-
 The instrument carries a flat 0.05–0.10 pH LOW display offset, measured 2026-09-26
 (4.00 read 3.97; 9.18 read 9.13/9.10; distilled 5.50 against the 5.6 air-equilibrium).
 It is not a slope error and not the 0.3-high failure the 5.8 guard looks for. It is
@@ -126,10 +130,6 @@ per-recipe TARGET shifted by the instrument's display offset (Citra IPA: TARGET 
 Keep the guard: above 5.8, check the meter against a second reference before
 adding acid. The meter currently carries an approximately 0.1 pH LOW bias,
 unverified until it is retested after an electrode soak.
-
-CLOSED 2026-09-26: in-mash thresholds are derived from the per-recipe TARGET, not from the
-old global 5.2–5.4 target (5.5–5.6 → branches at 5.5, 5.6 and 5.8; cap 2 mL). Keep
-exhaustive branch coverage in `procedure.test.ts` (sweeps 4.8–6.4).
 
 ## Procedure and print requirements
 

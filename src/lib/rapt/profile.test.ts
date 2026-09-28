@@ -7,13 +7,20 @@ const citraInput = {
   mashTempC: 66.7, grainTempC: 20, hasCrystalOrRoast: false,
 };
 
-function citraProfile(mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }]) {
+function citraProfile(
+  mashSteps = [{ stepTemp: 66.7, stepTime: 60 }, { stepTemp: 75, stepTime: 10 }],
+  miscAdditions = [
+    { name: 'Servomyces', amount: 0.3, unit: 'g', time: 15, use: 'Boil' },
+    // Brewfather returns Whirlfloc as items; the output must render 1 tablet.
+    { name: 'Whirlfloc', amount: 1, unit: 'items', time: 15, use: 'Boil' },
+  ]
+) {
   return buildRaptProfile(citraInput, {
     recipeName: 'Citra IPA',
     mashSteps,
     boilHops: [{ name: 'Cascade', amount: 50, time: 60, use: 'Boil' }],
-    miscAdditions: [{ name: 'Servomyces + Whirlfloc', amount: 0.5, unit: 'tsp', time: 15, use: 'Boil' }],
-    whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, use: 'Whirlpool' }],
+    miscAdditions,
+    whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, temp: 80, use: 'Whirlpool' }],
     preBoilGravityTarget: '~1.054 at 25 L',
   });
 }
@@ -32,20 +39,20 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
       'Boil heat',
       'Boil',
       'Whirlpool',
-      'Flameout and chill',
+      'Cooling',
     ]);
-    expect(profile.steps.map((step) => step.targetC)).toEqual([72.2, 66.7, 66.7, 75, 80, 80, 105, 105, 80, 80]);
+    expect(profile.steps.map((step) => step.targetC)).toEqual([72.2, 66.7, 66.7, 75, 80, 80, 105, 105, 80, 20]);
     expect(profile.steps.map((step) => step.endCondition)).toEqual([
       'manual', 'manual', 'timer', 'timer', 'manual', 'manual', 'manual', 'timer', 'timer', 'manual',
     ]);
   });
 
-  it('uses explicit timer starts and keeps unreachable timers on step start', () => {
+  it('starts timers at target except for the unreachable boil plateau', () => {
     const timers = profile.steps.filter((step) => step.endCondition === 'timer');
     expect(timers.every((step) => step.timerStart !== undefined)).toBe(true);
     expect(profile.steps[3]).toMatchObject({ targetC: 75, durationMinutes: 10, timerStart: 'onTargetReached' });
     expect(profile.steps[7]).toMatchObject({ targetC: 105, timerStart: 'onStepStart', durationMinutes: 60 });
-    expect(profile.steps[8]).toMatchObject({ targetC: 80, timerStart: 'onStepStart', durationMinutes: 20 });
+    expect(profile.steps[8]).toMatchObject({ targetC: 80, timerStart: 'onTargetReached', durationMinutes: 20 });
   });
 
   it('supports all three alert triggers and rejects an unreachable temperature trigger', () => {
@@ -55,14 +62,20 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(alerts.some((alert) => alert.when === 'temperatureReached')).toBe(true);
     expect(alerts.filter((alert) => alert.when === 'temperatureReached').every((alert) => alert.temperatureC < 100)).toBe(true);
     expect(profile.steps[6].alerts.find((alert) => alert.when === 'temperatureReached')).toMatchObject({ temperatureC: 98 });
+    expect(profile.steps[8].alerts).toContainEqual({ when: 'stepStart', message: 'Add the chiller to the kettle.' });
+    expect(profile.steps[8].alerts).toContainEqual({ when: 'temperatureReached', temperatureC: 80, message: 'Add Citra.' });
+    expect(profile.steps[9].alerts).toContainEqual({ when: 'stepStart', message: 'Pull hops out.' });
+    expect(profile.steps[9].alerts).toContainEqual({ when: 'temperatureReached', temperatureC: 30, message: 'Take the OG sample.' });
   });
 
-  it('keeps the recipe additions and visible manufacturer flag', () => {
+  it('keeps the recipe additions and renders the normalized Whirlfloc unit', () => {
     const alerts = profile.steps.flatMap((step) => step.alerts.map((alert) => alert.message)).join('\n');
     expect(alerts).toContain('50 g Cascade');
     expect(profile.steps[7].alerts).toContainEqual(expect.objectContaining({ when: 'elapsed', elapsedMinutes: 45 }));
     expect(alerts).toContain('Servomyces');
-    expect(alerts).toContain('FLAG');
+    expect(alerts).toContain('Whirlfloc');
+    expect(alerts).toContain('1 tablet Whirlfloc');
+    expect(alerts).not.toContain('FLAG');
     expect(alerts).toContain('~1.054 at 25 L');
     expect(alerts).toContain('refractometer');
   });
@@ -77,18 +90,20 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(copied).toContain('°C');
   });
 
-  it('gives every step a live-setpoint dry-fire warning', () => {
-    expect(profile.steps.every((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.noHeating))).toBe(true);
+  it('warns on manual steps and live holds at or above 80 °C', () => {
+    const warned = profile.steps.filter((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.liveSetpointWarning));
+    expect(warned.map((step) => step.name)).toEqual(['Heat strike water', 'Add grains', 'Sparging', 'Check gravity (pre-boil)', 'Boil heat', 'Boil', 'Whirlpool', 'Cooling']);
   });
 
-  it('renders the live-setpoint warning for every generated step', () => {
+  it('renders the live-setpoint warning once at the top and on qualifying steps', () => {
     const copied = renderRaptProfile(profile);
-    expect(copied.split(RAPT_SAFETY.noHeating).length - 1).toBe(profile.steps.length + 1);
+    expect(copied.split(RAPT_SAFETY.liveSetpointWarning).length - 1).toBe(9);
   });
 
-  it('does not create an alert-only or merged stage', () => {
+  it('keeps the boil as the only intentionally split pair', () => {
     expect(profile.steps.every((step) => step.name.length > 0 && Number.isFinite(step.targetC))).toBe(true);
-    expect('mergedSteps' in profile).toBe(false);
+    expect(profile.steps.filter((step) => step.targetC === 105).map((step) => step.name)).toEqual(['Boil heat', 'Boil']);
+    expect(profile.steps.filter((step) => step.name === 'Boil heat' || step.name === 'Boil')).toHaveLength(2);
   });
 });
 
@@ -101,5 +116,33 @@ describe('mash schedule preservation', () => {
     ]);
     expect(profile.steps.map((step) => step.name)).toContain('Mash rest');
     expect(profile.steps.filter((step) => step.name === 'Mash rest')).toHaveLength(2);
+  });
+});
+
+describe('amount-aware manufacturer reference flags', () => {
+  const misc = (amount: number, unit = 'g') => [{ name: 'Servomyces', amount, unit, time: 15, use: 'Boil' }];
+  const boilAlert = (amount: number, unit = 'g') => citraProfile(undefined, misc(amount, unit)).steps[7].alerts
+    .find((alert) => alert.when === 'elapsed')?.message ?? '';
+
+  it('reports the direction and range for low Servomyces', () => {
+    expect(boilAlert(0.05)).toContain('Servomyces 0.05 g is ~4× below the reference for a 19 L batch (use 0.19–0.38 g).');
+  });
+
+  it('reports an above-range Servomyces overdose without an inverted zero factor', () => {
+    expect(boilAlert(1.5)).toContain('Servomyces 1.5 g is ~4× above the reference for a 19 L batch (use 0.19–0.38 g).');
+    expect(boilAlert(1.5)).not.toContain('~0×');
+  });
+
+  it('reports a small above-range Servomyces excess to one decimal', () => {
+    expect(boilAlert(0.4)).toContain('Servomyces 0.4 g is ~1.1× above the reference for a 19 L batch (use 0.19–0.38 g).');
+  });
+
+  it('does not flag in-range Servomyces at 0.19 g or 0.3 g', () => {
+    expect(boilAlert(0.19)).not.toContain('FLAG');
+    expect(boilAlert(0.3)).not.toContain('FLAG');
+  });
+
+  it('accepts one capsule for a 19 L batch', () => {
+    expect(boilAlert(1, 'capsule')).not.toContain('FLAG');
   });
 });
