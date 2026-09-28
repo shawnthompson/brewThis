@@ -41,7 +41,7 @@ export default function RaptProfile({ recipe }: { recipe: BrewfatherRecipe }) {
       </ol>
       <section className="d-print-none mt-4">
         <h2 className="h4">Unverified portal assumptions</h2>
-        <ul><li>The exact portal handling of a 105 °C unreachable boil setpoint is observed on this rig but remains unverified as a general portal rule.</li><li>Boil-off and grain absorption are unmeasured assumptions. Current notes disagree between 0.80 L/kg and approximately 1.0 L/kg absorption; the app does not resolve that disagreement.</li></ul>
+        <ul><li>The exact portal handling of a 105 °C unreachable boil setpoint is observed on this rig but remains unverified as a general portal rule.</li><li>Whether a temperature-reached trigger fires while descending through its target is unverified; Cooling relies on this for the 30 °C OG reminder.</li><li>Boil-off and grain absorption are unmeasured assumptions. Current notes disagree between 0.80 L/kg and approximately 1.0 L/kg absorption; the app does not resolve that disagreement.</li></ul>
         <h2 className="h4 mt-4">Alternatives report</h2>
         <p><strong>1. Manual authoring handoff — this round.</strong> Lowest risk and exactly what this generator supports: paste the generated profile into the portal once per beer. It needs no credentials or spec change beyond this generator.</p>
         <p><strong>2. Round-trip verification — recommended next.</strong> Read <code>GetProfiles</code>/<code>GetProfile</code>, store a profile id, model the live <code>ProfileModel</code>, and diff only normalized portal fields. Useful, but requires RAPT credentials and a portal export/shape decision. The live Swagger exposes reads but no profile create/save operation.</p>

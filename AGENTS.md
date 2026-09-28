@@ -97,7 +97,8 @@ warning is general for Flameout and chill; Sparging carries its own first-runnin
 clause. Strike uses the calculated one-decimal value, followed by a separate manual
 Add grains step at mash temperature. Emit every configured mash rest; Mash out is one timer step starting on target reached.
 The boil is split: manual heat to 105 °C, then a 60-minute timer with
-`timerStart: onStepStart`; the whirlpool is an 80 °C, 20-minute `onStepStart` timer.
+`timerStart: onStepStart`; only an unreachable target forces that start. The whirlpool
+uses `onTargetReached`; its step-start alert adds the chiller before the 80 °C hold.
 Every timer has an explicit start, every alert uses one of the three portal triggers,
 and every temperature trigger is below the physical plateau. There is no six-stage cap;
 do not emit a merged profile. Servomyces and Whirlfloc quantities receive amount-aware
@@ -106,14 +107,13 @@ static templates may interpolate measured amounts. Servomyces is 1–2 g/hL; Whi
 uses Kerry's published 2 tablets per 117.35 L of 10 Plato wort. Brewfather `items` for
 Whirlfloc maps to `tablet`.
 Decimal target temperatures were confirmed accepted 2026-09-27. Exact 105 °C
-behavior outside this rig and import/export format remain unverified.
+behavior outside this rig and import/export format remain unverified. Whether a
+temperature-reached trigger fires while descending through its target is unverified.
 ## Mash pH
 
 The pH meter is calibrated as of 2026-09-26. **Do not recalibrate before brew day.**
 The day-before step reads: "Meter calibrated 2026-09-26. Do not recalibrate before
 brewing. Take readings through the meter display offset." (`PH.instrumentStatus`).
-The old "calibrate the day before" instruction is retired.
-
 The instrument carries a flat 0.05–0.10 pH LOW display offset, measured 2026-09-26
 (4.00 read 3.97; 9.18 read 9.13/9.10; distilled 5.50 against the 5.6 air-equilibrium).
 It is not a slope error and not the 0.3-high failure the 5.8 guard looks for. It is
@@ -129,10 +129,6 @@ per-recipe TARGET shifted by the instrument's display offset (Citra IPA: TARGET 
 Keep the guard: above 5.8, check the meter against a second reference before
 adding acid. The meter currently carries an approximately 0.1 pH LOW bias,
 unverified until it is retested after an electrode soak.
-
-CLOSED 2026-09-26: in-mash thresholds are derived from the per-recipe TARGET, not from the
-old global 5.2–5.4 target (5.5–5.6 → branches at 5.5, 5.6 and 5.8; cap 2 mL). Keep
-exhaustive branch coverage in `procedure.test.ts` (sweeps 4.8–6.4).
 
 ## Procedure and print requirements
 

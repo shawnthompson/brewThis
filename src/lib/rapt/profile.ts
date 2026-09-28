@@ -1,6 +1,6 @@
 import type { BrewfatherHop, BrewfatherMashStep } from '@/types';
 import { calculateBrewSheet, round, type BrewSheetInput } from '@/lib/brewsheet/calculations';
-import { RAPT_REFERENCE_FLAGS, RAPT_SAFETY, WHIRLPOOL_MINUTES } from '@/lib/brewsheet/procedure';
+import { RAPT_REFERENCE_FLAGS, RAPT_SAFETY, WHIRLPOOL_MINUTES, WHIRLPOOL_TEMP_C } from '@/lib/brewsheet/procedure';
 
 export type RaptStepType = 'heat' | 'ramp';
 export type RaptEndCondition = 'timer' | 'targetReached' | 'manual';
@@ -39,7 +39,7 @@ export interface RaptScheduleInput {
   recipeName: string;
   mashSteps?: BrewfatherMashStep[];
   boilHops?: Pick<BrewfatherHop, 'name' | 'amount' | 'time' | 'use'>[];
-  whirlpoolHops?: Pick<BrewfatherHop, 'name' | 'amount' | 'time' | 'use'>[];
+  whirlpoolHops?: Pick<BrewfatherHop, 'name' | 'amount' | 'time' | 'temp' | 'use'>[];
   miscAdditions?: RaptMiscAddition[];
   preBoilGravityTarget?: string;
   whirlpoolMinutes?: number;
@@ -66,7 +66,7 @@ function liveSetpointWarning(): RaptAlert {
 
 function stepWarnings(step: Pick<RaptStep, 'endCondition' | 'targetC' | 'timerStart'>): RaptAlert[] {
   const isManualHold = step.endCondition === 'manual';
-  const isLiveHold = step.targetC === 80 || (step.targetC === 105 && step.timerStart === 'onStepStart');
+  const isLiveHold = step.targetC >= 80;
   return isManualHold || isLiveHold ? [liveSetpointWarning()] : [];
 }
 
@@ -105,9 +105,8 @@ function mashSteps(input: BrewSheetInput, schedule: RaptScheduleInput, strikeTem
     type: 'heat',
     targetC: strikeTempC,
     endCondition: 'manual',
-    alerts: [],
+    alerts: stepWarnings({ endCondition: 'manual', targetC: strikeTempC }),
   }];
-  steps[0].alerts = stepWarnings(steps[0]);
 
   steps.push({
     name: 'Add grains',
@@ -214,6 +213,7 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
   const boilStart = boilHopLabel(schedule.boilHops, input.boilMinutes);
   const boilMisc = miscLabelAt(schedule.miscAdditions, 15, input.batchSizeL);
   const whirlpoolNames = names(schedule.whirlpoolHops ?? []);
+  const whirlpoolTempC = schedule.whirlpoolHops?.find((hop) => hop.temp !== undefined)?.temp ?? WHIRLPOOL_TEMP_C;
   const whirlpoolMinutes = schedule.whirlpoolMinutes
     ?? Math.max(...(schedule.whirlpoolHops ?? []).map((hop) => hop.time ?? 0), WHIRLPOOL_MINUTES);
   const gravityTarget = schedule.preBoilGravityTarget
@@ -250,14 +250,17 @@ export function buildRaptProfile(input: BrewSheetInput, schedule: RaptScheduleIn
     },
     {
       name: 'Whirlpool',
-      type: 'heat', targetC: 80, endCondition: 'timer', timerStart: 'onStepStart', durationMinutes: whirlpoolMinutes,
-      alerts: [...stepWarnings({ endCondition: 'timer', targetC: 80, timerStart: 'onStepStart' }), { when: 'stepStart', message: whirlpoolNames ? `Add ${whirlpoolNames} and start the whirlpool.` : 'Start the whirlpool according to the recipe.' }],
+      // The step-start alert adds the chiller; the hop addition waits for the recipe target.
+      type: 'heat', targetC: whirlpoolTempC, endCondition: 'timer', timerStart: 'onTargetReached', durationMinutes: whirlpoolMinutes,
+      alerts: [...stepWarnings({ endCondition: 'timer', targetC: whirlpoolTempC, timerStart: 'onTargetReached' }),
+        { when: 'stepStart', message: 'Add the chiller to the kettle.' },
+        ...(whirlpoolNames ? [{ when: 'temperatureReached' as const, temperatureC: whirlpoolTempC, message: `Add ${whirlpoolNames}.` }] : [])],
     },
     {
-      name: 'Flameout and chill',
-      type: 'heat', targetC: 80, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 80 }), {
-        when: 'stepStart', message: 'Manual point: flameout, pull the hop sock, and begin chilling.',
-      }],
+      name: 'Cooling',
+      type: 'heat', targetC: 20, endCondition: 'manual', alerts: [...stepWarnings({ endCondition: 'manual', targetC: 20 }),
+        { when: 'stepStart', message: 'Pull hops out.' },
+        { when: 'temperatureReached', temperatureC: 30, message: 'Take the OG sample.' }],
     },
   ];
 

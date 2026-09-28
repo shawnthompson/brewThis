@@ -20,7 +20,7 @@ function citraProfile(
     mashSteps,
     boilHops: [{ name: 'Cascade', amount: 50, time: 60, use: 'Boil' }],
     miscAdditions,
-    whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, use: 'Whirlpool' }],
+    whirlpoolHops: [{ name: 'Citra', amount: 200, time: 20, temp: 80, use: 'Whirlpool' }],
     preBoilGravityTarget: '~1.054 at 25 L',
   });
 }
@@ -39,20 +39,20 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
       'Boil heat',
       'Boil',
       'Whirlpool',
-      'Flameout and chill',
+      'Cooling',
     ]);
-    expect(profile.steps.map((step) => step.targetC)).toEqual([72.2, 66.7, 66.7, 75, 80, 80, 105, 105, 80, 80]);
+    expect(profile.steps.map((step) => step.targetC)).toEqual([72.2, 66.7, 66.7, 75, 80, 80, 105, 105, 80, 20]);
     expect(profile.steps.map((step) => step.endCondition)).toEqual([
       'manual', 'manual', 'timer', 'timer', 'manual', 'manual', 'manual', 'timer', 'timer', 'manual',
     ]);
   });
 
-  it('uses explicit timer starts and keeps unreachable timers on step start', () => {
+  it('starts timers at target except for the unreachable boil plateau', () => {
     const timers = profile.steps.filter((step) => step.endCondition === 'timer');
     expect(timers.every((step) => step.timerStart !== undefined)).toBe(true);
     expect(profile.steps[3]).toMatchObject({ targetC: 75, durationMinutes: 10, timerStart: 'onTargetReached' });
     expect(profile.steps[7]).toMatchObject({ targetC: 105, timerStart: 'onStepStart', durationMinutes: 60 });
-    expect(profile.steps[8]).toMatchObject({ targetC: 80, timerStart: 'onStepStart', durationMinutes: 20 });
+    expect(profile.steps[8]).toMatchObject({ targetC: 80, timerStart: 'onTargetReached', durationMinutes: 20 });
   });
 
   it('supports all three alert triggers and rejects an unreachable temperature trigger', () => {
@@ -62,6 +62,10 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(alerts.some((alert) => alert.when === 'temperatureReached')).toBe(true);
     expect(alerts.filter((alert) => alert.when === 'temperatureReached').every((alert) => alert.temperatureC < 100)).toBe(true);
     expect(profile.steps[6].alerts.find((alert) => alert.when === 'temperatureReached')).toMatchObject({ temperatureC: 98 });
+    expect(profile.steps[8].alerts).toContainEqual({ when: 'stepStart', message: 'Add the chiller to the kettle.' });
+    expect(profile.steps[8].alerts).toContainEqual({ when: 'temperatureReached', temperatureC: 80, message: 'Add Citra.' });
+    expect(profile.steps[9].alerts).toContainEqual({ when: 'stepStart', message: 'Pull hops out.' });
+    expect(profile.steps[9].alerts).toContainEqual({ when: 'temperatureReached', temperatureC: 30, message: 'Take the OG sample.' });
   });
 
   it('keeps the recipe additions and visible manufacturer flag', () => {
@@ -87,12 +91,12 @@ describe('buildRaptProfile — Citra IPA golden fixture', () => {
     expect(copied).toContain('°C');
   });
 
-  it('keeps the live-setpoint warning on the kettle-risk steps', () => {
+  it('warns on manual steps and live holds at or above 80 °C', () => {
     const warned = profile.steps.filter((step) => step.alerts.some((alert) => alert.message === RAPT_SAFETY.liveSetpointWarning));
-    expect(warned.map((step) => step.name)).toEqual(['Heat strike water', 'Add grains', 'Sparging', 'Check gravity (pre-boil)', 'Boil heat', 'Boil', 'Whirlpool', 'Flameout and chill']);
+    expect(warned.map((step) => step.name)).toEqual(['Heat strike water', 'Add grains', 'Sparging', 'Check gravity (pre-boil)', 'Boil heat', 'Boil', 'Whirlpool', 'Cooling']);
   });
 
-  it('renders the live-setpoint warning once at the top and on kettle-risk steps', () => {
+  it('renders the live-setpoint warning once at the top and on qualifying steps', () => {
     const copied = renderRaptProfile(profile);
     expect(copied.split(RAPT_SAFETY.liveSetpointWarning).length - 1).toBe(9);
   });
